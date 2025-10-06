@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Build a Well Tycoon</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="game-container">
+    <!-- HUD BAR -->
+    <header class="hud">
+      <h1>💧 Build a Well</h1>
+      <div class="hud-stats">
+        <div class="stat">💰 Coins: <span id="coins">100</span></div>
+        <div class="stat">👥 Villagers: <span id="villagers">0</span></div>
+      </div>
+    </header>
+
+    <!-- Village + Game Body -->
+<div class="village">
+  <h2>Village Map</h2>
+  <div id="villagerProgressContainer" style="width:100%;margin-bottom:10px;">
+    <div id="villagerProgressBar" style="height:16px;background:#ddd;border-radius:8px;overflow:hidden;">
+      <div id="villagerProgress" style="height:100%;width:100%;background:#00a8b5;transition:width 0.5s;"></div>
+    </div>
+    <span id="villagerProgressLabel" style="font-size:0.95em;font-weight:bold;display:block;margin-top:2px;">1000 villagers alive</span>
+  </div>
+  <div id="map"></div>
+  <p id="status">Click a dry spot to build a well 💧</p>
+</div>
+
+    <div class="controls">
+  <button id="buildBtn">⛏️ Start Digging</button>
+      <div class="progress">
+        <div id="progressBar"></div>
+      </div>
+    </div>
+
+    <footer class="fundraise">
+  <p id="fundraiseStatus">🌍 Fundraising active: +50 coins every minute (<span id="fundraiseCountdown">60</span>s)</p>
+        <button id="resetBtn" class="reset">♻️ Reset Game</button>
+    </footer>    
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
+
