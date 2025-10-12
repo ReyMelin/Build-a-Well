@@ -1,42 +1,74 @@
+/* === COLOR VARIABLES === */
+:root {
+  --hud-glow: 0 0 12px 2px var(--brand-blue);
+  --panel-border: 2px solid var(--brand-blue);
+  --brand-blue: #2E9DF7;
+  --brand-yellow: #FFC907;
+  --brand-teal: #8BD1CB;
+  --brand-green: #4FCB53;
+  --brand-darkgreen: #159A48;
+  --brand-orange: #FF902A;
+  --brand-red: #F5402C;
+  --brand-pinkred: #F16061;
+  --bg-dark: #222520;
+  --bg-medium: #383B36;
+  --text-light: #F8EED3;
+}
 body {
-  font-family: 'Poppins', sans-serif;
-  background: linear-gradient(#f4e1c1, #b77b48);
-  color: #333;
+  font-family: 'Baskerville', 'Proxima Nova', 'Avenir', Georgia, serif;
+  background: var(--bg-dark);
+  color: var(--text-light);
   text-align: center;
   margin: 0;
   padding: 0;
+  letter-spacing: 0.14em;
 }
 
 .game-container {
   max-width: 400px;
   margin: 40px auto;
   padding: 10px 20px;
-  background: #fff6e5;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  background: var(--bg-medium);
+  border-radius: 12px;
+  box-shadow: var(--hud-glow);
+  border: var(--panel-border);
 }
 
 /* --- HUD BAR --- */
 .hud {
-  background: #008dca;
-  color: white;
-  padding: 10px;
-  border-radius: 10px;
+  background: rgba(34,37,32,0.95);
+  color: var(--text-light);
+  padding: 16px 10px 10px 10px;
+  border-radius: 10px 10px 0 0;
+  border-bottom: 2px solid var(--brand-blue);
+  box-shadow: var(--hud-glow);
 }
 
 .hud h1 {
   margin: 5px 0;
-  font-size: 1.5rem;
+  font-size: 1.7rem;
+  color: var(--brand-blue);
+  text-shadow: 0 2px 8px var(--brand-blue), 0 1px 0 #000;
+  font-family: 'Baskerville', 'Proxima Nova', 'Avenir', Georgia, serif;
+  letter-spacing: 0.14em;
 }
 
 .hud-stats {
   display: flex;
   justify-content: space-around;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
+  border-radius: 6px;
+  background: rgba(46,157,247,0.08);
+  border: 1.5px solid var(--brand-blue);
+  box-shadow: 0 0 8px 0 var(--brand-blue);
+  margin-top: 8px;
+  padding: 6px 0;
 }
 
 .stat span {
   font-weight: bold;
+  color: var(--brand-yellow);
+  text-shadow: 0 1px 2px #000;
 }
 
 .village {
@@ -48,16 +80,18 @@ body {
   height: 100px;
   margin: 0 auto;
   border-radius: 50%;
-  border: 5px solid #555;
+  border: 5px solid var(--brand-blue);
   transition: background 1s ease;
 }
 
 .dry {
-  background: #a9825a;
+  background: var(--brand-orange);
+  border: 3px solid var(--brand-red);
 }
 
 .wet {
-  background: #00a8b5;
+  background: var(--brand-green);
+  border: 3px solid var(--brand-darkgreen);
   opacity: 1;
 }
 
@@ -68,15 +102,15 @@ body {
 @keyframes fadeInWell {
   0% {
     opacity: 0.3;
-    box-shadow: 0 0 0 0 #00a8b5;
+    box-shadow: 0 0 0 0 var(--brand-blue);
   }
   60% {
     opacity: 1;
-    box-shadow: 0 0 20px 10px #00a8b5;
+    box-shadow: 0 0 20px 10px var(--brand-blue);
   }
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 #00a8b5;
+    box-shadow: 0 0 0 0 var(--brand-blue);
   }
 }
 
@@ -86,23 +120,29 @@ body {
 }
 
 button {
-  background: #ffd54f;
+  background: var(--brand-blue);
+  color: var(--brand-yellow);
+  font-weight: bold;
+  border: 2px solid var(--brand-yellow);
+  box-shadow: 0 2px 8px 0 var(--brand-blue);
   border: none;
   padding: 10px 16px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 1rem;
-  transition: background 0.3s;
+  transition: background 0.3s, color 0.3s;
 }
 
 button:hover {
-  background: #ffc107;
+  background: var(--brand-yellow);
+  color: var(--brand-blue);
+  border-color: var(--brand-blue);
 }
 
 .progress {
   width: 100%;
   height: 10px;
-  background: #ddd;
+  background: var(--brand-blue);
   border-radius: 5px;
   margin-top: 15px;
   overflow: hidden;
@@ -111,36 +151,40 @@ button:hover {
 #progressBar {
   height: 100%;
   width: 0%;
-  background: #00a8b5;
+  background: var(--brand-yellow);
   transition: width 0.3s;
 }
 
 footer.fundraise {
   margin-top: 20px;
   font-size: 0.9rem;
-  color: #444;
+  color: var(--text-light);
 }
 /* --- MAP AREA --- */
 #map {
   position: relative;
   width: 100%;
   height: 250px;
-  background: #e6d0b5;
-  border: 3px solid #8b5a2b;
+  background: var(--bg-dark) url('Timbuktu map.png') center center/cover no-repeat;
+  border: 3px solid var(--brand-blue);
+  box-shadow: 0 0 16px 2px var(--brand-blue);
   border-radius: 10px;
   margin: 0 auto;
   overflow: hidden;
 }
 .reset {
-  background: #ef5350;
-  color: white;
+  color: var(--brand-yellow);
+  background: var(--brand-red);
+  border: 2px solid var(--brand-yellow);
+  font-weight: bold;
   margin-top: 10px;
   padding: 8px 14px;
   font-size: 0.9rem;
 }
 
 .reset:hover {
-  background: #e53935;
+  background: var(--brand-pinkred);
+  color: var(--brand-yellow);
 }
 
 /* --- SPOTS --- */
@@ -149,18 +193,20 @@ footer.fundraise {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 3px solid #444;
+  border: 3px solid var(--brand-blue);
+  box-shadow: 0 0 6px 0 var(--brand-blue);
   cursor: pointer;
   transition: background 0.3s, transform 0.2s;
 }
 
 .spot.dry {
-  background: #a9825a;
+  background: var(--brand-orange);
+  border-color: var(--brand-red);
 }
 
 .spot.wet {
-  background: #00a8b5;
-  border-color: #006b77;
+  background: var(--brand-green);
+  border-color: var(--brand-darkgreen);
   opacity: 1;
 }
 
