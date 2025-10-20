@@ -3,48 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Build a Well Tycoon</title>
-  <link rel="icon" type="image/x-icon" href="Jerry Jug.png">
+  <title>Build a Well: Clean Water Saves Lives</title>
+  <link rel="icon" type="image/x-icon" href="Black charity water logo.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="game-container">
-    <!-- HUD BAR -->
+
+    <!-- === HUD / HEADER === -->
     <header class="hud">
-  <img src="https://d11sa1anfvm2xk.cloudfront.net/media/downloads/logos/cw_horizontal_black.jpg" alt="charity: water logo" class="logo" style="max-width: 220px; height: auto; margin-bottom: 8px;">
+      <img src="https://d11sa1anfvm2xk.cloudfront.net/media/downloads/logos/cw_horizontal_black.jpg" 
+           alt="charity: water logo" 
+           class="logo" 
+           style="max-width: 220px; height: auto; margin-bottom: 8px;">
       <h1>Build a Well</h1>
+      <h3 style="margin-top:-5px;color:var(--brand-yellow);font-weight:500;">Clean Water Saves Lives</h3>
+
       <div class="hud-stats">
-        <div class="stat">💰 Coins: <span id="coins">100</span></div>
-        <div class="stat">👥 Villagers: <span id="villagers">0</span></div>
+        <div class="stat" id="fundsStat">💰 <span id="fundsLabel">USD</span>: <span id="currencySymbol">$</span><span id="funds">20,000</span></div>
+        <div class="stat">💧 Wells Built: <span id="wells">0</span></div>
+  <div class="stat">❤️ Lives Saved: <span id="livesSaved">0</span></div>
       </div>
     </header>
 
-    <!-- Village + Game Body -->
-<div class="village">
-  <h2>Village Map</h2>
-  <div id="villagerProgressContainer" style="width:100%;margin-bottom:10px;">
-    <div id="villagerProgressBar" style="height:16px;background:#ddd;border-radius:8px;overflow:hidden;">
-      <div id="villagerProgress" style="height:100%;width:100%;background:#00a8b5;transition:width 0.5s;"></div>
-    </div>
-    <span id="villagerProgressLabel" style="font-size:0.95em;font-weight:bold;display:block;margin-top:2px;">1000 villagers alive</span>
-  </div>
-  <div id="map"></div>
-  <p id="status">Click a dry spot to build a well 💧</p>
-</div>
+    <!-- === MAIN GAME AREA === -->
+    <div class="village">
+      <h2>Communities in Need</h2>
 
+      <!-- Global Impact Progress -->
+      <div id="globalImpactContainer" style="width:100%;margin-bottom:10px;">
+        <div id="globalImpactBar" style="height:16px;background:#333;border-radius:8px;overflow:hidden;">
+          <div id="impactProgress" style="height:100%;width:0%;background:var(--brand-green);transition:width 0.5s;"></div>
+        </div>
+        <span id="impactProgressLabel" style="font-size:0.95em;font-weight:bold;display:block;margin-top:4px;">
+          0% of unsafe water mortality prevented
+        </span>
+      </div>
+
+      <!-- Map Area -->
+      <div id="map"></div>
+      <p id="status">Select a region and start funding wells 🌍</p>
+    </div>
+
+    <!-- === CONTROLS === -->
     <div class="controls">
-  <button id="buildBtn">⛏️ Start Digging</button>
+      <button id="buildBtn">🚜 Fund a Well ($20,000)</button>
       <div class="progress">
         <div id="progressBar"></div>
       </div>
     </div>
 
+    <!-- === FOOTER / FUNDRAISE === -->
     <footer class="fundraise">
-  <p id="fundraiseStatus">🌍 Fundraising active: +50 coins every minute (<span id="fundraiseCountdown">60</span>s)</p>
-        <button id="resetBtn" class="reset">♻️ Reset Game</button>
+      <p id="fundraiseStatus">
+        💛 Every minute, your efforts bring clean water to more people.
+      </p>
+
+      <a href="https://www.charitywater.org/donate" 
+         target="_blank" 
+         id="donateBtn" 
+         style="display:inline-block;margin-top:10px;text-decoration:none;">
+        <button class="donate">🌊 Donate with charity: water</button>
+      </a>
+
+      <button id="resetBtn" class="reset">♻️ Reset Simulation</button>
+
+      <p style="margin-top:10px;font-size:0.85rem;opacity:0.8;">
+        Inspired by WHO data: Over 1.4 million lives are lost each year to unsafe water and sanitation.  
+        Each well built in this simulation supports 500 people with clean water.
+      </p>
     </footer>    
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>
-
