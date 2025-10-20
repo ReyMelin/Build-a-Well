@@ -7,8 +7,12 @@
   const AUTO_FUND_INTERVAL_SEC = 60;       // every 60 seconds
   const DIG_PROFIT_USD = 20000;            // dig completion reward
   const EXCHANGE_RATE_USD_TO_EUR = 0.92;   // USD→EUR rate (adjust if needed)
-  const TOTAL_LIVES_AT_RISK = 10000;      // goal: save 10,000 people
+  const TOTAL_LIVES_AT_RISK = 100000;      // goal: save 100,000 people
   const MAP_SPOT_COUNT = 24;               // number of map spots
+  // contamination timing
+  const CONTAM_MIN_SEC = 20;              // earliest contamination after start (seconds)
+  const CONTAM_MAX_SEC = 90;              // latest contamination delay (seconds)
+  const CONTAM_WARNING_MS = 6000;         // show warning duration (ms)
 
   // State
   let fundsUsd = INITIAL_FUNDS_USD;
@@ -19,6 +23,8 @@
   let digInterval = null;
   let autoFundTimer = null;
   let spots = []; // {status: 'dry'|'wet'|'well'}
+  let contaminationTimeout = null;
+  let activeWarningEl = null;
 
   // DOM (tolerant lookups for multiple possible IDs; allow missing elements)
   const fundsEl = document.getElementById('funds') || document.getElementById('fundsLabel') || null;
@@ -248,7 +254,7 @@
         if (statusEl) statusEl.textContent = `Automatic fundraising: ${formatCurrency(AUTO_FUND_AMOUNT_USD)} added.`;
         countdown = AUTO_FUND_INTERVAL_SEC;
         setTimeout(() => {
-          if (statusEl) statusEl.textContent = 'Click a dry area on the map to build a well 💧';
+          if (statusEl) statusEl.textContent = 'Build a well 💧';
         }, 2500);
       }
       if (fundraiseCountdownEl) fundraiseCountdownEl.textContent = String(countdown);
@@ -274,8 +280,89 @@
     updateLivesDisplay();
     resetProgressBar();
     if (statusEl) statusEl.textContent = 'Game reset. Click a dry area on the map to build a well 💧';
+    // clear contamination state
+    if (contaminationTimeout) { clearTimeout(contaminationTimeout); contaminationTimeout = null; }
+    if (activeWarningEl && activeWarningEl.parentElement) activeWarningEl.parentElement.removeChild(activeWarningEl);
+    activeWarningEl = null;
     renderMap();
     startAutoFundTimer();
+    scheduleContamination();
+  }
+
+  // schedule next contamination event at a random delay
+  function scheduleContamination() {
+    if (!mapEl) return;
+    if (contaminationTimeout) clearTimeout(contaminationTimeout);
+    const delay = Math.floor((Math.random() * (CONTAM_MAX_SEC - CONTAM_MIN_SEC) + CONTAM_MIN_SEC) * 1000);
+    contaminationTimeout = setTimeout(() => {
+      triggerContamination();
+    }, delay);
+  }
+
+  // show a temporary warning banner
+  function showContaminationWarning(text) {
+    if (!mapEl) return;
+    // remove existing
+    if (activeWarningEl && activeWarningEl.parentElement) activeWarningEl.parentElement.removeChild(activeWarningEl);
+    const el = document.createElement('div');
+    el.className = 'contamination-warning';
+    el.textContent = text || 'Water is contaminated!';
+    mapEl.appendChild(el);
+    activeWarningEl = el;
+    setTimeout(() => {
+      if (activeWarningEl && activeWarningEl.parentElement) activeWarningEl.parentElement.removeChild(activeWarningEl);
+      activeWarningEl = null;
+    }, CONTAM_WARNING_MS);
+  }
+
+  // pick a built well and make it toxic, adjust lives at risk
+  function triggerContamination() {
+    // find built wells
+    const builtIndices = [];
+    for (let i = 0; i < spots.length; i++) {
+      if (spots[i] && spots[i].status === 'well') builtIndices.push(i);
+    }
+    if (builtIndices.length === 0) {
+      // no wells yet — try again later
+      scheduleContamination();
+      return;
+    }
+
+    // choose a random built well
+    const chosen = builtIndices[Math.floor(Math.random() * builtIndices.length)];
+    spots[chosen].status = 'toxic';
+
+    // find its DOM element
+    let spotEl = null;
+    // try both data-index and wrapper search
+    if (mapEl) spotEl = mapEl.querySelector(`[data-index="${chosen}"]`);
+
+    if (spotEl) {
+      spotEl.classList.add('toxic');
+      // tint/alter the icon if present
+      const img = spotEl.querySelector('img');
+      if (img) {
+        img.style.filter = 'hue-rotate(-30deg) saturate(0.4) brightness(0.9)';
+        // optionally overlay a small toxic mark
+        const mark = document.createElement('span');
+        mark.textContent = '☠';
+        Object.assign(mark.style, {
+          position: 'absolute', right: '-6px', top: '-6px', color: '#ff4d4d', fontSize: '14px', pointerEvents: 'none'
+        });
+        spotEl.appendChild(mark);
+      } else {
+        // fallback: change background
+        spotEl.style.background = 'rgba(200,40,40,0.12)';
+      }
+    }
+
+    // make lives at risk go up by effectively losing the well's saved lives
+    livesSaved = Math.max(0, livesSaved - LIVES_PER_WELL);
+    updateLivesDisplay();
+
+    // show warning and reschedule next contamination
+    showContaminationWarning('Water is contaminated! A well has turned toxic.');
+    scheduleContamination();
   }
 
   // Wire UI (guard listeners to avoid addEventListener on null)
@@ -289,10 +376,12 @@
   updateLivesDisplay();
   renderMap();
   startAutoFundTimer();
+  scheduleContamination();
 
   // Cleanup on unload
   window.addEventListener('beforeunload', () => {
     if (autoFundTimer) clearInterval(autoFundTimer);
     if (digInterval) clearInterval(digInterval);
+    if (contaminationTimeout) clearTimeout(contaminationTimeout);
   });
 })();

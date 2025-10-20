@@ -255,6 +255,13 @@ footer.fundraise {
   box-shadow: none;
 }
 
+/* Toxic spots get a slight red tint and higher visual priority */
+.spot.toxic {
+  border-color: rgba(255,80,60,0.9);
+  background: rgba(255,80,60,0.06);
+  z-index: 8;
+}
+
 .spot:hover {
   transform: translateY(-6px) scale(1.18);
   z-index: 6;
@@ -303,4 +310,20 @@ footer.fundraise {
 
 /* subtle overlay shimmer to hint animation */
 .map-overlay { will-change: background, opacity; }
+
+/* contamination warning banner */
+.contamination-warning {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  background: rgba(220,50,50,0.95);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  z-index: 9999;
+  box-shadow: none;
+  pointer-events: none;
+}
 
