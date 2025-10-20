@@ -1,6 +1,6 @@
 /* === COLOR VARIABLES === */
 :root {
-  --hud-glow: 0 0 12px 2px var(--brand-blue);
+  --hud-glow: none;
   --panel-border: 2px solid var(--brand-blue);
   --brand-blue: #2E9DF7;
   --brand-yellow: #FFC907;
@@ -31,7 +31,7 @@ body {
   padding: 10px 20px;
   background: var(--bg-medium);
   border-radius: 12px;
-  box-shadow: var(--hud-glow);
+  box-shadow: none;
   border: var(--panel-border);
 }
 
@@ -42,14 +42,14 @@ body {
   padding: 16px 10px 10px 10px;
   border-radius: 10px 10px 0 0;
   border-bottom: 2px solid var(--brand-blue);
-  box-shadow: var(--hud-glow);
+  box-shadow: none;
 }
 
 .hud h1 {
   margin: 5px 0;
   font-size: 1.7rem;
   color: var(--brand-blue);
-  text-shadow: 0 2px 8px var(--brand-blue), 0 1px 0 #000;
+  /* removed blue glow */
   letter-spacing: 0.14em;
 }
 
@@ -60,7 +60,7 @@ body {
   border-radius: 6px;
   background: rgba(46,157,247,0.08);
   border: 1.5px solid var(--brand-blue);
-  box-shadow: 0 0 8px 0 var(--brand-blue);
+  box-shadow: none;
   margin-top: 8px;
   padding: 6px 0;
 }
@@ -84,7 +84,7 @@ button {
   color: var(--brand-yellow);
   font-weight: bold;
   border: 2px solid var(--brand-yellow);
-  box-shadow: 0 2px 8px 0 var(--brand-blue);
+  box-shadow: none;
   padding: 10px 16px;
   border-radius: 8px;
   cursor: pointer;
@@ -127,7 +127,7 @@ footer.fundraise {
   height: 250px;
   background: var(--bg-dark) url('Timbuktu map.png') center center/cover no-repeat;
   border: 3px solid var(--brand-blue);
-  box-shadow: 0 0 16px 2px var(--brand-blue);
+  box-shadow: none;
   border-radius: 10px;
   margin: 0 auto;
   overflow: hidden;
@@ -202,7 +202,7 @@ footer.fundraise {
 }
 @keyframes pulse {
   0% { transform: scale(1); box-shadow: none; }
-  50% { transform: scale(1.06); box-shadow: 0 10px 30px rgba(46,157,247,0.18); }
+  50% { transform: scale(1.06); box-shadow: none; }
   100% { transform: scale(1); box-shadow: none; }
 }
 
@@ -210,7 +210,7 @@ footer.fundraise {
 .hud .stat#fundsStat:hover,
 .hud .stat#fundsStat:focus {
   transform: translateY(-3px);
-  box-shadow: 0 8px 18px rgba(46,157,247,0.12);
+  box-shadow: none;
 }
 .currency-toggle {
   margin-top: 8px;
@@ -245,14 +245,14 @@ footer.fundraise {
 
 /* Wet spots get a cool green glow around the icon */
 .spot.wet {
-  border-radius: 6px;
-  box-shadow: 0 10px 40px rgba(79,203,83,0.30), 0 3px 12px rgba(25,154,72,0.16) inset;
+  /* remove colored glow */
+  box-shadow: none;
 }
 
 /* Dry spots get a warm orange/red hint */
 .spot.dry {
-  border-radius: 6px;
-  box-shadow: 0 10px 36px rgba(245,64,44,0.28), 0 3px 12px rgba(255,144,42,0.10) inset;
+  /* remove colored glow */
+  box-shadow: none;
 }
 
 .spot:hover {
@@ -265,7 +265,7 @@ footer.fundraise {
 
 /* Small focus-visible ring for keyboard users */
 .spot:focus-visible {
-  box-shadow: 0 0 0 6px rgba(46,157,247,0.10), 0 8px 24px rgba(0,0,0,0.25);
+  box-shadow: none;
 }
 
 /* Larger spread glow behind each spot for more visual weight */
@@ -286,19 +286,19 @@ footer.fundraise {
 }
 
 .spot.wet::after {
-  background: radial-gradient(circle, rgba(79,203,83,0.42) 0%, rgba(46,157,247,0.12) 38%, transparent 60%);
-  opacity: 0.85;
+  background: none;
+  opacity: 0;
 }
 
 .spot.dry::after {
-  background: radial-gradient(circle, rgba(245,64,44,0.42) 0%, rgba(255,144,42,0.12) 36%, transparent 60%);
-  opacity: 0.82;
+  background: none;
+  opacity: 0;
 }
 
 /* Intensify the glow on hover */
 .spot:hover::after {
   transform: translate(-50%, -50%) scale(1.18);
-  opacity: 1;
+  opacity: 0;
 }
 
 /* subtle overlay shimmer to hint animation */
