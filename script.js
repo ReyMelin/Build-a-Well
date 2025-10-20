@@ -7,12 +7,12 @@
   const AUTO_FUND_INTERVAL_SEC = 60;       // every 60 seconds
   const DIG_PROFIT_USD = 20000;            // dig completion reward
   const EXCHANGE_RATE_USD_TO_EUR = 0.92;   // USD→EUR rate (adjust if needed)
-  const TOTAL_LIVES_AT_RISK = 100000;      // goal: save 100,000 people
+  const TOTAL_LIVES_AT_RISK = 10000;      // goal: save 10,000 people
   const MAP_SPOT_COUNT = 24;               // number of map spots
   // contamination timing
   const CONTAM_MIN_SEC = 20;              // earliest contamination after start (seconds)
   const CONTAM_MAX_SEC = 90;              // latest contamination delay (seconds)
-  const CONTAM_WARNING_MS = 6000;         // show warning duration (ms)
+  const CONTAM_WARNING_MS = 500;         // show warning duration (ms)
 
   // State
   let fundsUsd = INITIAL_FUNDS_USD;
@@ -40,9 +40,14 @@
   const resetBtn = document.getElementById('resetBtn') || null;
   const mapEl = document.getElementById('map') || null;
   const wellCostDisplayEl = document.getElementById('wellCostDisplay') || null;
+  // new: explicit currency UI pieces
+  const currencySymbolEl = document.getElementById('currencySymbol') || null;
+  const fundsLabelEl = document.getElementById('fundsLabel') || null;
+  const fundsStatEl = document.getElementById('fundsStat') || null;
 
   // Helper: format currency based on selected currency
-  function formatCurrency(amountUsd) {
+  // full formatted string including symbol (use in messages)
+  function formatCurrencyFull(amountUsd) {
     if (currency === 'USD') {
       return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amountUsd);
     } else {
@@ -50,13 +55,30 @@
       return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(eur);
     }
   }
+  // numeric part only (no symbol) used for HUD numeric element + separate symbol element
+  function formatCurrencyNumber(amountUsd) {
+    if (currency === 'USD') {
+      return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(amountUsd);
+    } else {
+      const eur = amountUsd * EXCHANGE_RATE_USD_TO_EUR;
+      return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(eur);
+    }
+  }
 
   // UI updates (safe checks before DOM writes)
   function updateFundsDisplay() {
-    if (fundsEl) fundsEl.textContent = formatCurrency(fundsUsd);
+    if (fundsEl) fundsEl.textContent = formatCurrencyNumber(fundsUsd);
+    if (currencySymbolEl) currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
+    if (fundsLabelEl) fundsLabelEl.textContent = currency === 'USD' ? 'USD' : 'EUR';
   }
   function updateWellCostDisplay() {
-    if (wellCostDisplayEl) wellCostDisplayEl.textContent = formatCurrency(WELL_COST_USD);
+    if (wellCostDisplayEl) {
+      // show symbol + number or localized full string depending on layout preference
+      if (currencySymbolEl) {
+        currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
+      }
+      wellCostDisplayEl.textContent = formatCurrencyNumber(WELL_COST_USD);
+    }
   }
   function updateLivesDisplay() {
     if (livesEl) livesEl.textContent = String(livesSaved);
@@ -229,7 +251,7 @@
     }
 
     // Completed: announce and reward
-    if (statusEl) statusEl.textContent = `Fantastic! You have earned ${formatCurrency(DIG_PROFIT_USD)}`;
+    if (statusEl) statusEl.textContent = `Fantastic! You have earned ${formatCurrencyFull(DIG_PROFIT_USD)}`;
     fundsUsd += DIG_PROFIT_USD;
     updateFundsDisplay();
 
@@ -251,7 +273,7 @@
       if (countdown <= 0) {
         fundsUsd += AUTO_FUND_AMOUNT_USD;
         updateFundsDisplay();
-        if (statusEl) statusEl.textContent = `Automatic fundraising: ${formatCurrency(AUTO_FUND_AMOUNT_USD)} added.`;
+        if (statusEl) statusEl.textContent = `Automatic fundraising: ${formatCurrencyFull(AUTO_FUND_AMOUNT_USD)} added.`;
         countdown = AUTO_FUND_INTERVAL_SEC;
         setTimeout(() => {
           if (statusEl) statusEl.textContent = 'Build a well 💧';
@@ -265,6 +287,9 @@
   function toggleCurrency() {
     currency = currency === 'USD' ? 'EUR' : 'USD';
     if (currencyToggleBtn) currencyToggleBtn.textContent = currency === 'USD' ? 'Switch to EUR' : 'Switch to USD';
+    // update label/symbol and HUD numeric immediately
+    if (fundsLabelEl) fundsLabelEl.textContent = currency === 'USD' ? 'USD' : 'EUR';
+    if (currencySymbolEl) currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
     updateFundsDisplay();
     updateWellCostDisplay();
   }
@@ -365,10 +390,43 @@
     scheduleContamination();
   }
 
-  // Wire UI (guard listeners to avoid addEventListener on null)
-  if (buildBtn) buildBtn.addEventListener('click', startDigProgress);
-  if (currencyToggleBtn) currencyToggleBtn.addEventListener('click', toggleCurrency);
-  if (resetBtn) resetBtn.addEventListener('click', resetGame);
+  // Wire UI (robust: delegated handlers, ensure button is enabled)
+  // ensure the build button behaves like a control (avoid accidental form-submit)
+  if (buildBtn) {
+    try { buildBtn.type = 'button'; } catch (e) { /* ignore */ }
+    buildBtn.disabled = false;
+  }
+
+  // clicking the HUD funds stat toggles currency as requested
+  if (fundsStatEl) {
+    fundsStatEl.style.cursor = 'pointer';
+    fundsStatEl.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      toggleCurrency();
+    });
+  }
+
+  // Delegated click handler: reliable even if elements are re-rendered/replaced
+  document.addEventListener('click', (ev) => {
+    const btn = ev.target.closest && ev.target.closest('#buildBtn');
+    if (btn) {
+      ev.preventDefault();
+      startDigProgress();
+      return;
+    }
+    const reset = ev.target.closest && ev.target.closest('#resetBtn');
+    if (reset) {
+      ev.preventDefault();
+      resetGame();
+      return;
+    }
+    const currencyBtn = ev.target.closest && (ev.target.closest('#currencyToggle') || ev.target.closest('#currencyToggleBtn'));
+    if (currencyBtn) {
+      ev.preventDefault();
+      toggleCurrency();
+      return;
+    }
+  });
 
   // Initialize
   updateFundsDisplay();
