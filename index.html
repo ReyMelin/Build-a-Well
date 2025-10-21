@@ -44,11 +44,12 @@
     </div>
 
     <!-- === CONTROLS === -->
-    <div class="controls">
-      <button id="buildBtn">Dig a Well</button>
-      <div class="progress">
-        <div id="progressBar"></div>
-      </div>
+    <div class="controls" style="display: flex; justify-content: space-between; align-items: center;">
+      <button id="digBtn" style="flex:1; margin-right:10px;">Dig</button>
+      <button id="buildBtn" style="flex:1; margin-left:10px;">Fundraise</button>
+    </div>
+    <div class="progress">
+      <div id="progressBar"></div>
     </div>
 
     <!-- === FOOTER / FUNDRAISE === -->
@@ -64,13 +65,17 @@
         <button class="donate">🌊 Donate with charity: water</button>
       </a>
 
-      <button id="resetBtn" class="reset">♻️ Reset Simulation</button>
-
       <p style="margin-top:10px;font-size:0.85rem;opacity:0.8;">
         Inspired by WHO data: Over 1.4 million lives are lost each year to unsafe water and sanitation.  
         Each well built in this simulation supports 500 people with clean water.
       </p>
     </footer>    
+
+    <!-- === RESET BUTTON AT BOTTOM === -->
+    <div style="width:100%;display:flex;justify-content:center;margin-top:32px;">
+      <button id="resetBtn" class="reset">♻️ Reset Simulation</button>
+    </div>
+
   </div>
 
   <script src="script.js"></script>

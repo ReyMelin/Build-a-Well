@@ -77,47 +77,9 @@ body {
 
 .controls {
   margin-top: 20px;
-}
-
-button {
-  background: var(--brand-blue);
-  color: var(--brand-yellow);
-  font-weight: bold;
-  border: 2px solid var(--brand-yellow);
-  box-shadow: none;
-  padding: 10px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background 0.3s, color 0.3s;
-}
-
-button:hover {
-  background: var(--brand-yellow);
-  color: var(--brand-blue);
-  border-color: var(--brand-blue);
-}
-
-.progress {
-  width: 100%;
-  height: 10px;
-  background: var(--brand-blue);
-  border-radius: 5px;
-  margin-top: 15px;
-  overflow: hidden;
-}
-
-#progressBar {
-  height: 100%;
-  width: 0%;
-  background: var(--brand-yellow);
-  transition: width 0.3s;
-}
-
-footer.fundraise {
-  margin-top: 20px;
-  font-size: 0.9rem;
-  color: var(--text-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 /* --- MAP AREA --- */
@@ -131,6 +93,14 @@ footer.fundraise {
   border-radius: 10px;
   margin: 0 auto;
   overflow: hidden;
+}
+
+/* Hide spots by default, show only when .spots-visible is on #map */
+#map .spot {
+  display: none !important;
+}
+#map.spots-visible .spot {
+  display: flex !important;
 }
 
 /* --- WEATHER OVERLAY --- */
@@ -190,6 +160,62 @@ footer.fundraise {
 .reset:hover {
   background: var(--brand-pinkred);
   color: var(--brand-yellow);
+}
+
+/* --- CONTROLS BUTTONS --- */
+#digBtn, #buildBtn {
+  flex: 1 1 0;
+  min-width: 0;
+  border: 2px solid var(--brand-yellow);
+  font-weight: bold;
+  font-size: 1rem;
+  border-radius: 8px;
+  box-shadow: none;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+#digBtn {
+  margin-right: 10px;
+  background: #8B5C2A; /* brown */
+}
+#buildBtn {
+  margin-left: 10px;
+  background: var(--brand-green); /* green */
+}
+
+#digBtn:hover, #buildBtn:hover {
+  color: var(--brand-yellow);
+  border-color: var(--brand-yellow);
+}
+
+#digBtn:hover {
+  background: #a06a32;
+}
+
+#buildBtn:hover {
+  background: #3fae46;
+}
+
+/* --- DONATE BUTTON --- */
+button.donate, .donate {
+  background: transparent;
+  color: #fff;
+  border: 2px solid var(--brand-yellow);
+  font-weight: bold;
+  font-size: 1rem;
+  border-radius: 8px;
+  box-shadow: none;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+button.donate:hover, .donate:hover {
+  color: var(--brand-yellow);
+  border-color: var(--brand-yellow);
+  background: rgba(255, 201, 7, 0.08);
 }
 
 /* --- REMOVE OLD SPOT STYLES --- */

@@ -32,6 +32,7 @@
   const wellsEl = document.getElementById('wells') || null;
   const fundraiseCountdownEl = document.getElementById('fundraiseCountdown') || document.getElementById('fundraiseStatus') || null;
   const buildBtn = document.getElementById('buildBtn') || null;
+  const digBtn = document.getElementById('digBtn') || null;
   const progressBarEl = document.getElementById('progressBar') || null;
   const villagerProgressEl = document.getElementById('villagerProgress') || document.getElementById('impactProgress') || null;
   const villagerProgressLabel = document.getElementById('villagerProgressLabel') || document.getElementById('impactProgressLabel') || null;
@@ -104,6 +105,7 @@
     mapEl.innerHTML = '';
     mapEl.style.position = 'relative';
     mapEl.style.overflow = 'hidden';
+    mapEl.classList.remove('spots-visible'); // hide spots by default
 
     // create map image element
     const img = document.createElement('img');
@@ -132,9 +134,8 @@
     // when image has measured size, place spots using percent positions
     img.onload = () => {
       spots = [];
-      // add simple random spawn of spots across the visible area
       for (let i = 0; i < MAP_SPOT_COUNT; i++) {
-        const isDry = Math.random() < 0.9; // ~90% dry by default
+        const isDry = Math.random() < 0.9;
         const status = isDry ? 'dry' : 'wet';
         spots.push({ status });
 
@@ -143,7 +144,6 @@
         spot.dataset.index = String(i);
         Object.assign(spot.style, {
           position: 'absolute',
-          // keep spots away from exact edges (5%–90%)
           left: `${5 + Math.random() * 90}%`,
           top: `${5 + Math.random() * 90}%`,
           width: '48px',
@@ -157,8 +157,10 @@
           cursor: status === 'dry' ? 'pointer' : 'default',
           border: '2px solid rgba(0,0,0,0.08)',
           userSelect: 'none',
-          pointerEvents: 'auto', // enable this spot to receive pointer events
-          background: 'transparent'
+          pointerEvents: 'auto',
+          background: 'transparent',
+          // Hide dry spots by default, will be revealed by dig action
+          visibility: status === 'dry' ? 'hidden' : 'visible'
         });
 
         spot.title = status === 'dry' ? 'Dry area — click to build a well' : 'Wet area';
@@ -175,11 +177,16 @@
         });
         spot.appendChild(icon);
 
-        // only dry spots can be built on
         if (status === 'dry') {
+          // Not revealed by default
+          spot.style.visibility = 'hidden';
+          spot.removeAttribute('data-revealed');
           spot.addEventListener('click', (ev) => {
             ev.stopPropagation();
-            onSpotClick(parseInt(spot.dataset.index, 10), spot);
+            // Only allow clicking if revealed
+            if (spot.hasAttribute('data-revealed')) {
+              onSpotClick(parseInt(spot.dataset.index, 10), spot);
+            }
           });
         }
 
@@ -207,7 +214,7 @@
     }
     // Attempt to build using funds
     if (fundsUsd < WELL_COST_USD) {
-      if (statusEl) statusEl.textContent = `Insufficient funds — need ${formatCurrency(WELL_COST_USD)} to build.`;
+      if (statusEl) statusEl.textContent = `Not enough funds. Please fundraise before building a well!`;
       return;
     }
     // Deduct cost, mark spot as well
@@ -235,66 +242,51 @@
     updateLivesDisplay();
     if (statusEl) statusEl.textContent = `Built a well — ${LIVES_PER_WELL} lives helped.`;
     setTimeout(() => {
-      if (statusEl) statusEl.textContent = 'Click a dry area on the map to build a well 💧';
+      if (statusEl) statusEl.textContent = 'Dig to open the ground.';
     }, 2000);
   }
 
-  // Dig / Fundraise action: each click moves progress +10%; at 100% reward DIG_PROFIT_USD
-  function startDigProgress() {
-    // increment progress by 10% on each click
-    digProgress = Math.min(digProgress + 10, 100);
-    if (progressBarEl) progressBarEl.style.width = `${digProgress}%`;
-
-    if (digProgress < 100) {
-      if (statusEl) statusEl.textContent = `Digging... ${digProgress}%`;
+  let digClicks = 0;
+  function revealSpots() {
+    if (!mapEl) return;
+    digClicks++;
+    if (digClicks < 3) {
+      if (statusEl) statusEl.textContent = `Digging... ${Math.round((digClicks / 3) * 100)}%`;
       return;
     }
+    digClicks = 0;
+    if (!mapEl.classList.contains('spots-visible')) mapEl.classList.add('spots-visible');
+    const allSpots = mapEl.querySelectorAll('.spot.dry');
+    const hiddenSpots = Array.from(allSpots).filter(
+      spot => !spot.hasAttribute('data-revealed')
+    );
+    if (hiddenSpots.length === 0) {
+      if (statusEl) statusEl.textContent = 'No more diggable spots!';
+      return;
+    }
+    const revealSpot = hiddenSpots[Math.floor(Math.random() * hiddenSpots.length)];
+    revealSpot.style.visibility = 'visible';
+    revealSpot.setAttribute('data-revealed', 'true');
+    if (statusEl) statusEl.textContent = 'Build a well!';
+  }
 
-    // Completed: announce and reward
-    if (statusEl) statusEl.textContent = `Fantastic! You have earned ${formatCurrencyFull(DIG_PROFIT_USD)}`;
+  function startFundraiseProgress() {
+    digProgress = Math.min(digProgress + 10, 100);
+    if (progressBarEl) progressBarEl.style.width = `${digProgress}%`;
+    if (digProgress < 100) {
+      if (statusEl) statusEl.textContent = `Fundraising... ${digProgress}%`;
+      return;
+    }
+    if (statusEl) statusEl.textContent = `Fantastic! You have raised ${formatCurrencyFull(DIG_PROFIT_USD)}!`;
     fundsUsd += DIG_PROFIT_USD;
     updateFundsDisplay();
-
-    // Reset progress after brief pause so player sees the completion message
     setTimeout(() => {
       digProgress = 0;
       if (progressBarEl) progressBarEl.style.width = '0%';
-      if (statusEl) statusEl.textContent = 'Click a dry area on the map to build a well 💧';
+      if (statusEl) statusEl.textContent = 'Dig to open the ground.';
     }, 1500);
   }
 
-  // Auto-fund timer (guard writes)
-  function startAutoFundTimer() {
-    if (autoFundTimer) clearInterval(autoFundTimer);
-    countdown = AUTO_FUND_INTERVAL_SEC;
-    if (fundraiseCountdownEl) fundraiseCountdownEl.textContent = String(countdown);
-    autoFundTimer = setInterval(() => {
-      countdown -= 1;
-      if (countdown <= 0) {
-        fundsUsd += AUTO_FUND_AMOUNT_USD;
-        updateFundsDisplay();
-        if (statusEl) statusEl.textContent = `Automatic fundraising: ${formatCurrencyFull(AUTO_FUND_AMOUNT_USD)} added.`;
-        countdown = AUTO_FUND_INTERVAL_SEC;
-        setTimeout(() => {
-          if (statusEl) statusEl.textContent = 'Build a well 💧';
-        }, 2500);
-      }
-      if (fundraiseCountdownEl) fundraiseCountdownEl.textContent = String(countdown);
-    }, 1000);
-  }
-
-  // Currency toggle (guard)
-  function toggleCurrency() {
-    currency = currency === 'USD' ? 'EUR' : 'USD';
-    if (currencyToggleBtn) currencyToggleBtn.textContent = currency === 'USD' ? 'Switch to EUR' : 'Switch to USD';
-    // update label/symbol and HUD numeric immediately
-    if (fundsLabelEl) fundsLabelEl.textContent = currency === 'USD' ? 'USD' : 'EUR';
-    if (currencySymbolEl) currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
-    updateFundsDisplay();
-    updateWellCostDisplay();
-  }
-
-  // Reset (guard)
   function resetGame() {
     fundsUsd = INITIAL_FUNDS_USD;
     livesSaved = 0;
@@ -304,7 +296,7 @@
     updateWellCostDisplay();
     updateLivesDisplay();
     resetProgressBar();
-    if (statusEl) statusEl.textContent = 'Game reset. Click a dry area on the map to build a well 💧';
+    if (statusEl) statusEl.textContent = 'Game reset. Dig to open the ground.';
     // clear contamination state
     if (contaminationTimeout) { clearTimeout(contaminationTimeout); contaminationTimeout = null; }
     if (activeWarningEl && activeWarningEl.parentElement) activeWarningEl.parentElement.removeChild(activeWarningEl);
@@ -396,6 +388,10 @@
     try { buildBtn.type = 'button'; } catch (e) { /* ignore */ }
     buildBtn.disabled = false;
   }
+  if (digBtn) {
+    try { digBtn.type = 'button'; } catch (e) { /* ignore */ }
+    digBtn.disabled = false;
+  }
 
   // clicking the HUD funds stat toggles currency as requested
   if (fundsStatEl) {
@@ -408,10 +404,16 @@
 
   // Delegated click handler: reliable even if elements are re-rendered/replaced
   document.addEventListener('click', (ev) => {
-    const btn = ev.target.closest && ev.target.closest('#buildBtn');
-    if (btn) {
+    const fundBtn = ev.target.closest && ev.target.closest('#buildBtn');
+    if (fundBtn) {
       ev.preventDefault();
-      startDigProgress();
+      startFundraiseProgress();
+      return;
+    }
+    const digBtnEl = ev.target.closest && ev.target.closest('#digBtn');
+    if (digBtnEl) {
+      ev.preventDefault();
+      revealSpots();
       return;
     }
     const reset = ev.target.closest && ev.target.closest('#resetBtn');
@@ -427,6 +429,26 @@
       return;
     }
   });
+
+  // Add startAutoFundTimer function
+  function startAutoFundTimer() {
+    if (autoFundTimer) clearInterval(autoFundTimer);
+    countdown = AUTO_FUND_INTERVAL_SEC;
+    if (fundraiseCountdownEl) fundraiseCountdownEl.textContent = String(countdown);
+    autoFundTimer = setInterval(() => {
+      countdown -= 1;
+      if (countdown <= 0) {
+        fundsUsd += AUTO_FUND_AMOUNT_USD;
+        updateFundsDisplay();
+        if (statusEl) statusEl.textContent = `Automatic fundraising: ${formatCurrencyFull(AUTO_FUND_AMOUNT_USD)} added.`;
+        countdown = AUTO_FUND_INTERVAL_SEC;
+        setTimeout(() => {
+          if (statusEl) statusEl.textContent = 'Build a well 💧';
+        }, 2500);
+      }
+      if (fundraiseCountdownEl) fundraiseCountdownEl.textContent = String(countdown);
+    }, 1000);
+  }
 
   // Initialize
   updateFundsDisplay();
