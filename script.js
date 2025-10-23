@@ -365,7 +365,7 @@
       if (img) {
         // Prefer swapping the image file to a toxic variant if available
         try {
-          img.src = 'Toxic Water Drop.png';
+          img.src = 'Toxic water.png';
           img.alt = 'toxic water';
         } catch (e) {
           // if swapping fails, fall back to tint + marker
