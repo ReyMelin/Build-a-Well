@@ -44,6 +44,7 @@
   // new: explicit currency UI pieces
   const currencySymbolEl = document.getElementById('currencySymbol') || null;
   const fundsLabelEl = document.getElementById('fundsLabel') || null;
+  const currencyEmojiEl = document.getElementById('currencyEmoji') || null;
   const fundsStatEl = document.getElementById('fundsStat') || null;
 
   // Helper: format currency based on selected currency
@@ -71,6 +72,7 @@
     if (fundsEl) fundsEl.textContent = formatCurrencyNumber(fundsUsd);
     if (currencySymbolEl) currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
     if (fundsLabelEl) fundsLabelEl.textContent = currency === 'USD' ? 'USD' : 'EUR';
+    if (currencyEmojiEl) currencyEmojiEl.textContent = currency === 'USD' ? '💵' : '💶';
   }
   function updateWellCostDisplay() {
     if (wellCostDisplayEl) {
@@ -78,6 +80,7 @@
       if (currencySymbolEl) {
         currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
       }
+      if (currencyEmojiEl) currencyEmojiEl.textContent = currency === 'USD' ? '💵' : '💶';
       wellCostDisplayEl.textContent = formatCurrencyNumber(WELL_COST_USD);
     }
   }
@@ -242,7 +245,7 @@
     updateLivesDisplay();
     if (statusEl) statusEl.textContent = `Built a well — ${LIVES_PER_WELL} lives helped.`;
     setTimeout(() => {
-      if (statusEl) statusEl.textContent = 'Dig to open the ground.';
+      if (statusEl) statusEl.textContent = 'Tap the dirt spots to build more wells!';
     }, 2000);
   }
 
@@ -356,13 +359,21 @@
 
     if (spotEl) {
       spotEl.classList.add('toxic');
-      // tint/alter the icon if present
+      // If this was a built well, replace the clean water icon with a toxic icon.
       const img = spotEl.querySelector('img');
+      const wasWell = spots[chosen] && spots[chosen].status === 'toxic' || spotEl.classList.contains('toxic');
       if (img) {
-        img.style.filter = 'hue-rotate(-30deg) saturate(0.4) brightness(0.9)';
-        // optionally overlay a small toxic mark
+        // Prefer swapping the image file to a toxic variant if available
+        try {
+          img.src = 'Toxic Water Drop.png';
+          img.alt = 'toxic water';
+        } catch (e) {
+          // if swapping fails, fall back to tint + marker
+          img.style.filter = 'hue-rotate(-30deg) saturate(0.4) brightness(0.9)';
+        }
+        // overlay a small hazard mark to make contamination obvious
         const mark = document.createElement('span');
-        mark.textContent = '☠';
+        mark.textContent = '☣';
         Object.assign(mark.style, {
           position: 'absolute', right: '-6px', top: '-6px', color: '#ff4d4d', fontSize: '14px', pointerEvents: 'none'
         });
@@ -448,6 +459,22 @@
       }
       if (fundraiseCountdownEl) fundraiseCountdownEl.textContent = String(countdown);
     }, 1000);
+  }
+
+  // Currency toggle (guard) — ensure all HUD pieces update immediately
+  function toggleCurrency() {
+    currency = currency === 'USD' ? 'EUR' : 'USD';
+    // update any explicit toggle button text if present
+    if (currencyToggleBtn) currencyToggleBtn.textContent = currency === 'USD' ? 'Switch to EUR' : 'Switch to USD';
+    // update label/symbol/emoji and HUD numeric immediately
+    if (fundsLabelEl) fundsLabelEl.textContent = currency === 'USD' ? 'USD' : 'EUR';
+    if (currencySymbolEl) currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
+    if (currencyEmojiEl) currencyEmojiEl.textContent = currency === 'USD' ? '💵' : '💶';
+    // refresh displays that depend on currency
+    updateFundsDisplay();
+    updateWellCostDisplay();
+    // optional status hint
+    if (statusEl) statusEl.textContent = `Prices shown in ${currency}.`;
   }
 
   // Initialize
