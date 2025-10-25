@@ -6,6 +6,7 @@
   const AUTO_FUND_AMOUNT_USD = 15000;      // automatic fundraising amount
   const AUTO_FUND_INTERVAL_SEC = 60;       // every 60 seconds
   const DIG_PROFIT_USD = 20000;            // dig completion reward
+  const CLEAN_COST_USD = 10000;           // cost to clean a toxic well
   const EXCHANGE_RATE_USD_TO_EUR = 0.92;   // USD→EUR rate (adjust if needed)
   const TOTAL_LIVES_AT_RISK = 10000;      // goal: save 10,000 people
   const MAP_SPOT_COUNT = 24;               // number of map spots
@@ -22,6 +23,9 @@
   let digProgress = 0;
   let digInterval = null;
   let autoFundTimer = null;
+  let fundraiseLocked = false; // prevent double-award while at 100%
+  let confettiLaunched = false; // ensure one celebration per goal
+  let firstWellBuilt = false; // prevents any prebuilt (visible) wells until player digs first well
   let spots = []; // {status: 'dry'|'wet'|'well'}
   let contaminationTimeout = null;
   let activeWarningEl = null;
@@ -30,7 +34,7 @@
   const fundsEl = document.getElementById('funds') || document.getElementById('fundsLabel') || null;
   const livesEl = document.getElementById('lives') || document.getElementById('livesSaved') || null;
   const wellsEl = document.getElementById('wells') || null;
-  const fundraiseCountdownEl = document.getElementById('fundraiseCountdown') || document.getElementById('fundraiseStatus') || null;
+  const fundraiseCountdownEl = document.getElementById('fundraiseCountdown') || null;
   const buildBtn = document.getElementById('buildBtn') || null;
   const digBtn = document.getElementById('digBtn') || null;
   const progressBarEl = document.getElementById('progressBar') || null;
@@ -73,7 +77,32 @@
     if (currencySymbolEl) currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
     if (fundsLabelEl) fundsLabelEl.textContent = currency === 'USD' ? 'USD' : 'EUR';
     if (currencyEmojiEl) currencyEmojiEl.textContent = currency === 'USD' ? '💵' : '💶';
+    // Flash the funds HUD when depleted
+    const hudTarget = fundsStatEl || fundsEl;
+    if (hudTarget) {
+      if (Number(fundsUsd) <= 0) {
+        hudTarget.classList.add('flash-red');
+        // remove class after animation completes to allow future flashes
+        setTimeout(() => { hudTarget.classList.remove('flash-red'); }, 1100);
+      } else {
+        hudTarget.classList.remove('flash-red');
+      }
+    }
   }
+
+  // helper: trigger a brief funds HUD flash (used when an action is blocked for lack of funds)
+  let _flashTimeout = null;
+  function flashFunds() {
+    const hudTarget = fundsStatEl || fundsEl;
+    if (!hudTarget) return;
+    hudTarget.classList.add('flash-red');
+    if (_flashTimeout) clearTimeout(_flashTimeout);
+    _flashTimeout = setTimeout(() => {
+      hudTarget.classList.remove('flash-red');
+      _flashTimeout = null;
+    }, 1100);
+  }
+
   function updateWellCostDisplay() {
     if (wellCostDisplayEl) {
       // show symbol + number or localized full string depending on layout preference
@@ -94,11 +123,95 @@
     if (villagerProgressLabel) {
       const still = Math.max(TOTAL_LIVES_AT_RISK - livesSaved, 0);
       villagerProgressLabel.textContent = `${still} lives still at risk`;
+      // celebrate when no one remains at risk
+      if (still === 0 && !confettiLaunched) {
+        confettiLaunched = true;
+        endGame();
+      } else if (still > 0) {
+        // allow re-trigger on future completion after reset/growth
+        confettiLaunched = false;
+      }
     }
   }
+
+  // stop timers/intervals used by the simulation
+  function stopAll() {
+    if (autoFundTimer) { clearInterval(autoFundTimer); autoFundTimer = null; }
+    if (digInterval) { clearInterval(digInterval); digInterval = null; }
+    if (contaminationTimeout) { clearTimeout(contaminationTimeout); contaminationTimeout = null; }
+  }
+
+  // end the game: stop background activity, fire confetti and overlay victory message
+  function endGame() {
+    stopAll();
+    launchConfetti();
+
+    // overlay on top of the map
+    if (!mapEl) return;
+    // avoid duplicate overlay
+    if (mapEl.querySelector('.victory-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'victory-overlay';
+
+    const message = document.createElement('div');
+    message.className = 'victory-message';
+    message.innerHTML = `<h1 class="disco-text">You Saved ${TOTAL_LIVES_AT_RISK.toLocaleString()} Lives!!!</h1>
+                         <p class="victory-sub">Thank you — your efforts made a life-saving difference.</p>`;
+
+    const restart = document.createElement('button');
+    restart.className = 'victory-restart';
+    restart.textContent = 'Restart Simulation';
+    restart.addEventListener('click', () => {
+      // remove overlay then reset game
+      if (overlay && overlay.parentElement) overlay.parentElement.removeChild(overlay);
+      confettiLaunched = false;
+      resetGame();
+    });
+
+    message.appendChild(restart);
+    overlay.appendChild(message);
+    // place overlay inside the map so it covers the map area
+    mapEl.appendChild(overlay);
+  }
+
   function resetProgressBar() {
     digProgress = 0;
     if (progressBarEl) progressBarEl.style.width = '0%';
+  }
+
+  // create and launch confetti pieces from bottom of the viewport
+  function launchConfetti() {
+    const colors = ['#FFC907', '#2E9DF7', '#4FCB53', '#FF902A', '#F5402C', '#8BD1CB'];
+    const container = document.createElement('div');
+    container.className = 'confetti-container';
+    document.body.appendChild(container);
+
+    const pieces = 40;
+    for (let i = 0; i < pieces; i++) {
+      const piece = document.createElement('span');
+      piece.className = 'confetti-piece';
+      const left = Math.random() * 100;
+      const size = 6 + Math.random() * 12;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const duration = 1200 + Math.random() * 1200; // ms
+      const delay = Math.random() * 300; // ms
+      Object.assign(piece.style, {
+        left: `${left}%`,
+        width: `${size}px`,
+        height: `${Math.max(6, size * 1.2)}px`,
+        background: color,
+        transform: `rotate(${Math.floor(Math.random() * 360)}deg)`,
+        animationDuration: `${duration}ms`,
+        animationDelay: `${delay}ms`
+      });
+      container.appendChild(piece);
+    }
+
+    // remove after animation
+    setTimeout(() => {
+      if (container && container.parentElement) container.parentElement.removeChild(container);
+    }, 3000);
   }
 
   // Map + weather rendering (simplified: remove color aura; place spots randomly)
@@ -116,11 +229,16 @@
     img.src = 'Timbuktu map.png';
     img.alt = 'Timbuktu map';
     img.crossOrigin = 'anonymous';
+    // let the CSS rule handle sizing; keep the image positioned to fully cover the container
     img.style.display = 'block';
+    img.style.position = 'absolute';
+    img.style.inset = '0';
     img.style.width = '100%';
-    img.style.height = 'auto';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    img.style.zIndex = '1';
     mapEl.appendChild(img);
-
+    
     // create a wrapper that sits above the image so spots are visible and clickable
     const spotsWrapper = document.createElement('div');
     Object.assign(spotsWrapper.style, {
@@ -136,19 +254,42 @@
 
     // when image has measured size, place spots using percent positions
     img.onload = () => {
+      // place spots with minimum spacing so they don't overlap and remain clickable
       spots = [];
+      const placed = [];
+      const MIN_DIST = 0.08; // normalized (0..1) minimum distance between spots (~8% of map)
+      const MAX_ATTEMPTS = 60;
       for (let i = 0; i < MAP_SPOT_COUNT; i++) {
-        const isDry = Math.random() < 0.9;
+        // before the first well is built, force all spots to be dry (hidden) so no prebuilt wells appear
+        const isDry = firstWellBuilt ? (Math.random() < 0.9) : true;
         const status = isDry ? 'dry' : 'wet';
         spots.push({ status });
+
+        // find a position not too close to existing spots
+        let x, y, ok = false, attempts = 0;
+        while (!ok && attempts < MAX_ATTEMPTS) {
+          x = 0.05 + Math.random() * 0.9; // avoid extreme edges
+          y = 0.05 + Math.random() * 0.9;
+          ok = true;
+          for (const p of placed) {
+            const dx = x - p.x, dy = y - p.y;
+            if ((dx * dx + dy * dy) < (MIN_DIST * MIN_DIST)) {
+              ok = false;
+              break;
+            }
+          }
+          attempts++;
+        }
+        // if can't find spaced position, accept the last random one
+        placed.push({ x, y });
 
         const spot = document.createElement('div');
         spot.className = `spot ${status}`;
         spot.dataset.index = String(i);
         Object.assign(spot.style, {
           position: 'absolute',
-          left: `${5 + Math.random() * 90}%`,
-          top: `${5 + Math.random() * 90}%`,
+          left: `${Math.round(x * 100)}%`,
+          top: `${Math.round(y * 100)}%`,
           width: '48px',
           height: '48px',
           transform: 'translate(-50%, -50%)',
@@ -158,41 +299,30 @@
           borderRadius: '6px',
           boxSizing: 'border-box',
           cursor: status === 'dry' ? 'pointer' : 'default',
-          border: '2px solid rgba(0,0,0,0.08)',
+          border: 'none',
           userSelect: 'none',
           pointerEvents: 'auto',
           background: 'transparent',
-          // Hide dry spots by default, will be revealed by dig action
           visibility: status === 'dry' ? 'hidden' : 'visible'
         });
 
         spot.title = status === 'dry' ? 'Dry area — click to build a well' : 'Wet area';
-
-        // show icon depending on status
         const icon = document.createElement('img');
         icon.alt = status === 'dry' ? 'dirt' : 'water';
-        icon.src = status === 'dry' ? 'Dirt Icon.png' : 'Clean Water Drop.png';
-        Object.assign(icon.style, {
-          width: '36px',
-          height: '36px',
-          display: 'block',
-          pointerEvents: 'none'
-        });
+        icon.src = status === 'dry' ? 'Dirt Icon.png' : 'Clean clear drop.png';
+        Object.assign(icon.style, { width: '36px', height: '36px', display: 'block', pointerEvents: 'none' });
         spot.appendChild(icon);
 
         if (status === 'dry') {
-          // Not revealed by default
           spot.style.visibility = 'hidden';
           spot.removeAttribute('data-revealed');
           spot.addEventListener('click', (ev) => {
             ev.stopPropagation();
-            // Only allow clicking if revealed
             if (spot.hasAttribute('data-revealed')) {
               onSpotClick(parseInt(spot.dataset.index, 10), spot);
             }
           });
         }
-
         spotsWrapper.appendChild(spot);
       }
     };
@@ -203,31 +333,70 @@
     }
   }
 
-  // Spot click: attempt to build well on that spot
+  // Spot click: build a well on a revealed dirt spot or clean a toxic well
   function onSpotClick(index, spotEl) {
     const spot = spots[index];
     if (!spot) return;
-    if (spot.status === 'well') {
-      if (statusEl) statusEl.textContent = 'There is already a well here.';
+    // Prevent building on dry spots that haven't been revealed by digging
+    if (spot.status === 'dry' && spotEl && !spotEl.hasAttribute('data-revealed')) {
+      if (statusEl) statusEl.textContent = 'This spot is still buried — dig to reveal it first.';
       return;
     }
+
+    // If toxic, allow cleaning for CLEAN_COST_USD
+    if (spot.status === 'toxic') {
+      if (fundsUsd < CLEAN_COST_USD) {
+        if (statusEl) statusEl.textContent = `Not enough funds to clean — need ${formatCurrencyFull(CLEAN_COST_USD)}.`;
+        flashFunds();
+        return;
+      }
+      fundsUsd -= CLEAN_COST_USD;
+      spot.status = 'well';
+      // restore DOM: swap to clean water, remove toxic visuals
+      if (spotEl) {
+        const img = spotEl.querySelector('img');
+        if (img) {
+          img.src = 'Clean clear drop.png';
+          img.alt = 'well';
+          img.style.filter = '';
+        }
+        spotEl.classList.remove('toxic');
+        // remove small hazard markers if present
+        Array.from(spotEl.querySelectorAll('span')).forEach(s => {
+          if (s.textContent && /[☣☠]/.test(s.textContent)) s.remove();
+        });
+        spotEl.style.background = '#6cc66c';
+        spotEl.title = 'Well cleaned';
+      }
+      // restore lives protected by this well
+      livesSaved = Math.min(TOTAL_LIVES_AT_RISK, livesSaved + LIVES_PER_WELL);
+      updateFundsDisplay();
+      updateLivesDisplay();
+      if (statusEl) statusEl.textContent = `Cleaned toxic well — ${formatCurrencyFull(CLEAN_COST_USD)} spent. ${LIVES_PER_WELL} lives protected again.`;
+      setTimeout(() => {
+        if (statusEl) statusEl.textContent = 'Tap the dirt spots to build more wells!';
+      }, 2500);
+      return;
+    }
+
+    // Otherwise, build a well on a dry revealed spot
     if (spot.status !== 'dry') {
       if (statusEl) statusEl.textContent = 'You can only build on dry areas.';
       return;
     }
-    // Attempt to build using funds
     if (fundsUsd < WELL_COST_USD) {
       if (statusEl) statusEl.textContent = `Not enough funds. Please fundraise before building a well!`;
+      flashFunds();
       return;
     }
-    // Deduct cost, mark spot as well
     fundsUsd -= WELL_COST_USD;
     spot.status = 'well';
-    // replace inner content with the clean water icon
+    // mark that the first well has been built so future map renders may include visible/wet spots
+    if (!firstWellBuilt) firstWellBuilt = true;
     if (spotEl) {
       spotEl.innerHTML = '';
       const wellImg = document.createElement('img');
-      wellImg.src = 'Clean Water Drop.png';
+      wellImg.src = 'Clean clear drop.png';
       wellImg.alt = 'well';
       Object.assign(wellImg.style, {
         width: '36px',
@@ -236,7 +405,6 @@
         pointerEvents: 'none'
       });
       spotEl.appendChild(wellImg);
-      spotEl.style.background = '#6cc66c'; // green to indicate well
       spotEl.title = 'Well built';
       spotEl.style.cursor = 'default';
     }
@@ -274,18 +442,29 @@
   }
 
   function startFundraiseProgress() {
+    // ignore clicks while the previous award is being shown
+    if (fundraiseLocked) return;
+
+    // increment
     digProgress = Math.min(digProgress + 10, 100);
     if (progressBarEl) progressBarEl.style.width = `${digProgress}%`;
+
     if (digProgress < 100) {
       if (statusEl) statusEl.textContent = `Fundraising... ${digProgress}%`;
       return;
     }
+
+    // reached 100% — award once and lock until reset
+    fundraiseLocked = true;
     if (statusEl) statusEl.textContent = `Fantastic! You have raised ${formatCurrencyFull(DIG_PROFIT_USD)}!`;
     fundsUsd += DIG_PROFIT_USD;
     updateFundsDisplay();
+
+    // Keep the completed message briefly, then reset progress and unlock.
     setTimeout(() => {
       digProgress = 0;
       if (progressBarEl) progressBarEl.style.width = '0%';
+      fundraiseLocked = false; // next click will start at first increment
       if (statusEl) statusEl.textContent = 'Dig to open the ground.';
     }, 1500);
   }
@@ -294,12 +473,19 @@
     fundsUsd = INITIAL_FUNDS_USD;
     livesSaved = 0;
     currency = 'USD';
+    firstWellBuilt = false;
     if (currencyToggleBtn) currencyToggleBtn.textContent = 'Switch to EUR';
     updateFundsDisplay();
     updateWellCostDisplay();
     updateLivesDisplay();
     resetProgressBar();
     if (statusEl) statusEl.textContent = 'Game reset. Dig to open the ground.';
+    // remove victory overlay if present
+    if (mapEl) {
+      const ov = mapEl.querySelector('.victory-overlay');
+      if (ov && ov.parentElement) ov.parentElement.removeChild(ov);
+    }
+    confettiLaunched = false;
     // clear contamination state
     if (contaminationTimeout) { clearTimeout(contaminationTimeout); contaminationTimeout = null; }
     if (activeWarningEl && activeWarningEl.parentElement) activeWarningEl.parentElement.removeChild(activeWarningEl);

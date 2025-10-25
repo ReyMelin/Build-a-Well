@@ -87,12 +87,23 @@ body {
   position: relative;
   width: 100%;
   height: 250px;
-  background: var(--bg-dark) url('Timbuktu map.png') center center/cover no-repeat;
+  background: var(--bg-dark); /* image is rendered via <img> to avoid duplicate layers */
   border: 3px solid var(--brand-blue);
   box-shadow: none;
   border-radius: 10px;
   margin: 0 auto;
   overflow: hidden;
+}
+
+/* ensure the map image inserted by script fills the area */
+#map img#mapImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  z-index: 1;
 }
 
 /* Hide spots by default, show only when .spots-visible is on #map */
@@ -252,7 +263,7 @@ button.donate:hover, .donate:hover {
   height: 36px;
   padding: 0;
   background: transparent;
-  border: none;
+  border: none; /* ensure no square border behind icons */
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
   display: flex;
@@ -352,4 +363,121 @@ button.donate:hover, .donate:hover {
   box-shadow: none;
   pointer-events: none;
 }
+
+/* Flash red for depleted funds */
+.hud .stat.flash-red {
+  animation: flash-red 1s ease-in-out 2;
+  /* ensure high visual priority while flashing */
+  z-index: 10000;
+}
+@keyframes flash-red {
+  0%   { background: rgba(255,60,60,0.0); color: var(--text-light); }
+  40%  { background: rgba(255,60,60,0.95); color: #fff; }
+  70%  { background: rgba(255,60,60,0.6); color: #fff; }
+  100% { background: rgba(255,60,60,0.0); color: var(--text-light); }
+}
+
+/* Confetti celebration (shoot from bottom to top) */
+.confetti-container {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 10000;
+}
+.confetti-piece {
+  position: absolute;
+  bottom: -8px;
+  display: block;
+  opacity: 0.95;
+  border-radius: 2px;
+  will-change: transform, opacity;
+  /* animation defined below */
+  animation-name: confetti-shoot;
+  animation-timing-function: cubic-bezier(.2,.8,.2,1);
+  animation-fill-mode: forwards;
+}
+@keyframes confetti-shoot {
+  0% {
+    transform: translateY(0) rotate(0deg) translateX(0);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(-60vh) rotate(360deg) translateX(10px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120vh) rotate(720deg) translateX(-20px);
+    opacity: 0;
+  }
+}
+
+/* Victory overlay covering the map area */
+.victory-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 12000;
+  background: rgba(0,0,0,0.45);
+  pointer-events: auto;
+}
+.victory-message {
+  text-align: center;
+  color: #fff;
+  padding: 18px 22px;
+  border-radius: 12px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  max-width: 90%;
+}
+.victory-message h1 {
+  margin: 0 0 8px 0;
+  font-size: 1.6rem;
+  line-height: 1.05;
+  letter-spacing: 0.06em;
+}
+
+/* disco color-changing text */
+.disco-text {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 8px;
+  animation: disco-colors 1.6s linear infinite;
+  font-weight: 900;
+}
+@keyframes disco-colors {
+  0%   { color: #FFC907; text-shadow: 0 2px 10px rgba(255,201,7,0.2); }
+  20%  { color: #2E9DF7; text-shadow: 0 2px 10px rgba(46,157,247,0.2); }
+  40%  { color: #4FCB53; text-shadow: 0 2px 10px rgba(79,203,83,0.2); }
+  60%  { color: #FF902A; text-shadow: 0 2px 10px rgba(255,144,42,0.2); }
+  80%  { color: #F5402C; text-shadow: 0 2px 10px rgba(245,64,44,0.2); }
+  100% { color: #8BD1CB; text-shadow: 0 2px 10px rgba(139,209,203,0.2); }
+}
+
+.victory-sub {
+  margin: 8px 0 12px 0;
+  opacity: 0.95;
+  font-weight: 600;
+}
+
+.victory-restart {
+  background: transparent;
+  color: #fff;
+  border: 2px solid #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.victory-restart:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+/* ensure confetti and overlay are above other map elements */
+.confetti-container, .victory-overlay { z-index: 10000; }
 
