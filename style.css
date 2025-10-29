@@ -13,6 +13,11 @@
   --bg-dark: #222520;
   --bg-medium: #383B36;
   --text-light: #F8EED3;
+
+  /* ensure overlay/fallback tokens exist (if not already defined above) */
+  --modal-overlay: rgba(0,0,0,0.6);
+  --modal-card-bg: #ffffff;
+  --modal-focus-ring: 4px rgba(46,157,247,0.16);
 }
 
 body {
@@ -478,6 +483,106 @@ button.donate:hover, .donate:hover {
   background: rgba(255,255,255,0.06);
 }
 
-/* ensure confetti and overlay are above other map elements */
-.confetti-container, .victory-overlay { z-index: 10000; }
+/* === Difficulty modal (brand-colored, accessible) === */
+#difficultyModal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--modal-overlay);
+  z-index: 9999;
+  padding: 20px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#difficultyModal .difficulty-card {
+  background: var(--modal-card-bg);
+  border-radius: 12px;
+  padding: 18px 20px;
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 12px 36px rgba(2,6,23,0.18);
+  color: var(--brand-muted);
+  font-family: inherit;
+}
+
+#difficultyModal .difficulty-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  color: var(--brand-blue);
+  font-weight: 600;
+}
+
+#difficultyModal .difficulty-card p {
+  margin: 0 0 14px;
+  color: var(--brand-muted);
+  font-size: 0.95rem;
+}
+
+/* Button row */
+#difficultyModal .difficulty-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+/* Base button appearance */
+#difficultyModal .difficulty-row button {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.96rem;
+  color: #fff;
+  transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease;
+  min-width: 0;
+}
+
+/* Brand-colored variants with subtle depth */
+#difficultyModal .btn-easy {
+  background: linear-gradient(180deg, var(--brand-green), var(--brand-darkgreen));
+  box-shadow: 0 8px 22px rgba(11,122,43,0.12);
+}
+#difficultyModal .btn-hard {
+  background: linear-gradient(180deg, var(--brand-orange), #8b4f00);
+  box-shadow: 0 8px 22px rgba(181,106,0,0.12);
+}
+#difficultyModal .btn-difficult {
+  background: linear-gradient(180deg, var(--brand-red), #7b1212);
+  box-shadow: 0 8px 22px rgba(164,25,25,0.12);
+}
+
+/* Hover and focus states — accessible outlines */
+#difficultyModal .difficulty-row button:hover {
+  transform: translateY(-3px);
+  filter: saturate(1.04);
+}
+#difficultyModal .difficulty-row button:active {
+  transform: translateY(0);
+}
+#difficultyModal .difficulty-row button:focus {
+  outline: none;
+  box-shadow: 0 0 0 var(--modal-focus-ring);
+  border-radius: 10px;
+}
+
+/* Disabled / aria-disabled */
+#difficultyModal .difficulty-row button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ensure modal content scales nicely on small screens */
+@media (max-width: 420px) {
+  #difficultyModal .difficulty-card { padding: 14px; }
+  #difficultyModal .difficulty-row { flex-direction: column; gap: 8px; }
+}
 

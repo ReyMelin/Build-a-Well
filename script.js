@@ -1,5 +1,5 @@
 (() => {
-  // Constants
+  // Constants (keep as base values for presets)
   const INITIAL_FUNDS_USD = 80000;         // start with $80,000
   const WELL_COST_USD = 20000;             // one well costs $20,000
   const LIVES_PER_WELL = 500;              // one well saves 500 lives
@@ -10,23 +10,73 @@
   const EXCHANGE_RATE_USD_TO_EUR = 0.92;   // USD→EUR rate (adjust if needed)
   const TOTAL_LIVES_AT_RISK = 10000;      // goal: save 10,000 people
   const MAP_SPOT_COUNT = 24;               // number of map spots
-  // contamination timing
   const CONTAM_MIN_SEC = 20;              // earliest contamination after start (seconds)
   const CONTAM_MAX_SEC = 90;              // latest contamination delay (seconds)
   const CONTAM_WARNING_MS = 500;         // show warning duration (ms)
 
-  // State
-  let fundsUsd = INITIAL_FUNDS_USD;
+  // runtime-config (will be set based on difficulty)
+  let runtime = {
+    startFunds: INITIAL_FUNDS_USD,
+    wellCost: WELL_COST_USD,
+    livesPerWell: LIVES_PER_WELL,
+    autoFundAmount: AUTO_FUND_AMOUNT_USD,
+    autoFundInterval: AUTO_FUND_INTERVAL_SEC,
+    digProfit: DIG_PROFIT_USD,
+    cleanCost: CLEAN_COST_USD,
+    contamMin: CONTAM_MIN_SEC,
+    contamMax: CONTAM_MAX_SEC
+  };
+
+  // Difficulty presets (tweak multipliers / values per difficulty)
+  const DIFFICULTY_PRESETS = {
+    Easy: {
+      startFunds: Math.round(INITIAL_FUNDS_USD * 1.5),
+      wellCost: Math.round(WELL_COST_USD * 0.9),
+      livesPerWell: LIVES_PER_WELL,
+      autoFundAmount: Math.round(AUTO_FUND_AMOUNT_USD * 1.25),
+      autoFundInterval: AUTO_FUND_INTERVAL_SEC,
+      digProfit: Math.round(DIG_PROFIT_USD * 1.1),
+      cleanCost: Math.round(CLEAN_COST_USD * 0.8),
+      contamMin: Math.round(CONTAM_MIN_SEC * 1.6),
+      contamMax: Math.round(CONTAM_MAX_SEC * 1.6)
+    },
+    Hard: {
+      // base/default
+      startFunds: INITIAL_FUNDS_USD,
+      wellCost: WELL_COST_USD,
+      livesPerWell: LIVES_PER_WELL,
+      autoFundAmount: AUTO_FUND_AMOUNT_USD,
+      autoFundInterval: AUTO_FUND_INTERVAL_SEC,
+      digProfit: DIG_PROFIT_USD,
+      cleanCost: CLEAN_COST_USD,
+      contamMin: CONTAM_MIN_SEC,
+      contamMax: CONTAM_MAX_SEC
+    },
+    Difficult: {
+      startFunds: Math.round(INITIAL_FUNDS_USD * 0.6),
+      wellCost: Math.round(WELL_COST_USD * 1.2),
+      livesPerWell: LIVES_PER_WELL,
+      autoFundAmount: Math.round(AUTO_FUND_AMOUNT_USD * 0.6),
+      autoFundInterval: AUTO_FUND_INTERVAL_SEC,
+      digProfit: Math.round(DIG_PROFIT_USD * 0.8),
+      cleanCost: Math.round(CLEAN_COST_USD * 1.3),
+      contamMin: Math.round(CONTAM_MIN_SEC * 0.6),
+      contamMax: Math.round(CONTAM_MAX_SEC * 0.6)
+    }
+  };
+
+  // State (defer funds initialization until difficulty chosen)
+  let fundsUsd = null;
   let livesSaved = 0;
   let currency = 'USD';
   let countdown = AUTO_FUND_INTERVAL_SEC;
   let digProgress = 0;
   let digInterval = null;
   let autoFundTimer = null;
-  let fundraiseLocked = false; // prevent double-award while at 100%
-  let confettiLaunched = false; // ensure one celebration per goal
-  let firstWellBuilt = false; // prevents any prebuilt (visible) wells until player digs first well
-  let spots = []; // {status: 'dry'|'wet'|'well'}
+  let fundraiseLocked = false;
+  let confettiLaunched = false;
+  let firstWellBuilt = false;
+  let spots = [];
   let contaminationTimeout = null;
   let activeWarningEl = null;
 
@@ -50,6 +100,10 @@
   const fundsLabelEl = document.getElementById('fundsLabel') || null;
   const currencyEmojiEl = document.getElementById('currencyEmoji') || null;
   const fundsStatEl = document.getElementById('fundsStat') || null;
+  const difficultyModal = document.getElementById('difficultyModal') || null;
+  const easyBtn = document.getElementById('easyBtn') || null;
+  const hardBtn = document.getElementById('hardBtn') || null;
+  const difficultBtn = document.getElementById('difficultBtn') || null;
 
   // Helper: format currency based on selected currency
   // full formatted string including symbol (use in messages)
@@ -71,13 +125,12 @@
     }
   }
 
-  // UI updates (safe checks before DOM writes)
+  // UI updates (use runtime values where needed)
   function updateFundsDisplay() {
     if (fundsEl) fundsEl.textContent = formatCurrencyNumber(fundsUsd);
     if (currencySymbolEl) currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
     if (fundsLabelEl) fundsLabelEl.textContent = currency === 'USD' ? 'USD' : 'EUR';
     if (currencyEmojiEl) currencyEmojiEl.textContent = currency === 'USD' ? '💵' : '💶';
-    // Flash the funds HUD when depleted
     const hudTarget = fundsStatEl || fundsEl;
     if (hudTarget) {
       if (Number(fundsUsd) <= 0) {
@@ -90,32 +143,19 @@
     }
   }
 
-  // helper: trigger a brief funds HUD flash (used when an action is blocked for lack of funds)
-  let _flashTimeout = null;
-  function flashFunds() {
-    const hudTarget = fundsStatEl || fundsEl;
-    if (!hudTarget) return;
-    hudTarget.classList.add('flash-red');
-    if (_flashTimeout) clearTimeout(_flashTimeout);
-    _flashTimeout = setTimeout(() => {
-      hudTarget.classList.remove('flash-red');
-      _flashTimeout = null;
-    }, 1100);
-  }
-
   function updateWellCostDisplay() {
     if (wellCostDisplayEl) {
-      // show symbol + number or localized full string depending on layout preference
       if (currencySymbolEl) {
         currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
       }
       if (currencyEmojiEl) currencyEmojiEl.textContent = currency === 'USD' ? '💵' : '💶';
-      wellCostDisplayEl.textContent = formatCurrencyNumber(WELL_COST_USD);
+      // display adjusted well cost
+      wellCostDisplayEl.textContent = formatCurrencyNumber(runtime.wellCost);
     }
   }
   function updateLivesDisplay() {
     if (livesEl) livesEl.textContent = String(livesSaved);
-    if (wellsEl) wellsEl.textContent = String(Math.floor(livesSaved / LIVES_PER_WELL));
+    if (wellsEl) wellsEl.textContent = String(Math.floor(livesSaved / runtime.livesPerWell));
     if (villagerProgressEl) {
       const progressRatio = Math.min(livesSaved / TOTAL_LIVES_AT_RISK, 1);
       villagerProgressEl.style.width = `${progressRatio * 100}%`;
@@ -333,26 +373,23 @@
     }
   }
 
-  // Spot click: build a well on a revealed dirt spot or clean a toxic well
+  // Spot click handler: use runtime values for costs and lives
   function onSpotClick(index, spotEl) {
     const spot = spots[index];
     if (!spot) return;
-    // Prevent building on dry spots that haven't been revealed by digging
     if (spot.status === 'dry' && spotEl && !spotEl.hasAttribute('data-revealed')) {
       if (statusEl) statusEl.textContent = 'This spot is still buried — dig to reveal it first.';
       return;
     }
 
-    // If toxic, allow cleaning for CLEAN_COST_USD
     if (spot.status === 'toxic') {
-      if (fundsUsd < CLEAN_COST_USD) {
-        if (statusEl) statusEl.textContent = `Not enough funds to clean — need ${formatCurrencyFull(CLEAN_COST_USD)}.`;
+      if (fundsUsd < runtime.cleanCost) {
+        if (statusEl) statusEl.textContent = `Not enough funds to clean — need ${formatCurrencyFull(runtime.cleanCost)}.`;
         flashFunds();
         return;
       }
-      fundsUsd -= CLEAN_COST_USD;
+      fundsUsd -= runtime.cleanCost;
       spot.status = 'well';
-      // restore DOM: swap to clean water, remove toxic visuals
       if (spotEl) {
         const img = spotEl.querySelector('img');
         if (img) {
@@ -361,37 +398,33 @@
           img.style.filter = '';
         }
         spotEl.classList.remove('toxic');
-        // remove small hazard markers if present
         Array.from(spotEl.querySelectorAll('span')).forEach(s => {
           if (s.textContent && /[☣☠]/.test(s.textContent)) s.remove();
         });
         spotEl.style.background = '#6cc66c';
         spotEl.title = 'Well cleaned';
       }
-      // restore lives protected by this well
-      livesSaved = Math.min(TOTAL_LIVES_AT_RISK, livesSaved + LIVES_PER_WELL);
+      livesSaved = Math.min(TOTAL_LIVES_AT_RISK, livesSaved + runtime.livesPerWell);
       updateFundsDisplay();
       updateLivesDisplay();
-      if (statusEl) statusEl.textContent = `Cleaned toxic well — ${formatCurrencyFull(CLEAN_COST_USD)} spent. ${LIVES_PER_WELL} lives protected again.`;
+      if (statusEl) statusEl.textContent = `Cleaned toxic well — ${formatCurrencyFull(runtime.cleanCost)} spent. ${runtime.livesPerWell} lives protected again.`;
       setTimeout(() => {
         if (statusEl) statusEl.textContent = 'Tap the dirt spots to build more wells!';
       }, 2500);
       return;
     }
 
-    // Otherwise, build a well on a dry revealed spot
     if (spot.status !== 'dry') {
       if (statusEl) statusEl.textContent = 'You can only build on dry areas.';
       return;
     }
-    if (fundsUsd < WELL_COST_USD) {
+    if (fundsUsd < runtime.wellCost) {
       if (statusEl) statusEl.textContent = `Not enough funds. Please fundraise before building a well!`;
       flashFunds();
       return;
     }
-    fundsUsd -= WELL_COST_USD;
+    fundsUsd -= runtime.wellCost;
     spot.status = 'well';
-    // mark that the first well has been built so future map renders may include visible/wet spots
     if (!firstWellBuilt) firstWellBuilt = true;
     if (spotEl) {
       spotEl.innerHTML = '';
@@ -408,10 +441,10 @@
       spotEl.title = 'Well built';
       spotEl.style.cursor = 'default';
     }
-    livesSaved += LIVES_PER_WELL;
+    livesSaved += runtime.livesPerWell;
     updateFundsDisplay();
     updateLivesDisplay();
-    if (statusEl) statusEl.textContent = `Built a well — ${LIVES_PER_WELL} lives helped.`;
+    if (statusEl) statusEl.textContent = `Built a well — ${runtime.livesPerWell} lives helped.`;
     setTimeout(() => {
       if (statusEl) statusEl.textContent = 'Tap the dirt spots to build more wells!';
     }, 2000);
@@ -442,35 +475,27 @@
   }
 
   function startFundraiseProgress() {
-    // ignore clicks while the previous award is being shown
     if (fundraiseLocked) return;
-
-    // increment
     digProgress = Math.min(digProgress + 10, 100);
     if (progressBarEl) progressBarEl.style.width = `${digProgress}%`;
-
     if (digProgress < 100) {
       if (statusEl) statusEl.textContent = `Fundraising... ${digProgress}%`;
       return;
     }
-
-    // reached 100% — award once and lock until reset
     fundraiseLocked = true;
-    if (statusEl) statusEl.textContent = `Fantastic! You have raised ${formatCurrencyFull(DIG_PROFIT_USD)}!`;
-    fundsUsd += DIG_PROFIT_USD;
+    if (statusEl) statusEl.textContent = `Fantastic! You have raised ${formatCurrencyFull(runtime.digProfit)}!`;
+    fundsUsd += runtime.digProfit;
     updateFundsDisplay();
-
-    // Keep the completed message briefly, then reset progress and unlock.
     setTimeout(() => {
       digProgress = 0;
       if (progressBarEl) progressBarEl.style.width = '0%';
-      fundraiseLocked = false; // next click will start at first increment
+      fundraiseLocked = false;
       if (statusEl) statusEl.textContent = 'Dig to open the ground.';
     }, 1500);
   }
 
   function resetGame() {
-    fundsUsd = INITIAL_FUNDS_USD;
+    fundsUsd = runtime.startFunds;
     livesSaved = 0;
     currency = 'USD';
     firstWellBuilt = false;
@@ -499,7 +524,7 @@
   function scheduleContamination() {
     if (!mapEl) return;
     if (contaminationTimeout) clearTimeout(contaminationTimeout);
-    const delay = Math.floor((Math.random() * (CONTAM_MAX_SEC - CONTAM_MIN_SEC) + CONTAM_MIN_SEC) * 1000);
+    const delay = Math.floor((Math.random() * (runtime.contamMax - runtime.contamMin) + runtime.contamMin) * 1000);
     contaminationTimeout = setTimeout(() => {
       triggerContamination();
     }, delay);
@@ -571,7 +596,7 @@
     }
 
     // make lives at risk go up by effectively losing the well's saved lives
-    livesSaved = Math.max(0, livesSaved - LIVES_PER_WELL);
+    livesSaved = Math.max(0, livesSaved - runtime.livesPerWell);
     updateLivesDisplay();
 
     // show warning and reschedule next contamination
@@ -630,15 +655,15 @@
   // Add startAutoFundTimer function
   function startAutoFundTimer() {
     if (autoFundTimer) clearInterval(autoFundTimer);
-    countdown = AUTO_FUND_INTERVAL_SEC;
+    countdown = runtime.autoFundInterval;
     if (fundraiseCountdownEl) fundraiseCountdownEl.textContent = String(countdown);
     autoFundTimer = setInterval(() => {
       countdown -= 1;
       if (countdown <= 0) {
-        fundsUsd += AUTO_FUND_AMOUNT_USD;
+        fundsUsd += runtime.autoFundAmount;
         updateFundsDisplay();
-        if (statusEl) statusEl.textContent = `Automatic fundraising: ${formatCurrencyFull(AUTO_FUND_AMOUNT_USD)} added.`;
-        countdown = AUTO_FUND_INTERVAL_SEC;
+        if (statusEl) statusEl.textContent = `Automatic fundraising: ${formatCurrencyFull(runtime.autoFundAmount)} added.`;
+        countdown = runtime.autoFundInterval;
         setTimeout(() => {
           if (statusEl) statusEl.textContent = 'Build a well 💧';
         }, 2500);
@@ -663,13 +688,38 @@
     if (statusEl) statusEl.textContent = `Prices shown in ${currency}.`;
   }
 
-  // Initialize
-  updateFundsDisplay();
-  updateWellCostDisplay();
-  updateLivesDisplay();
-  renderMap();
-  startAutoFundTimer();
-  scheduleContamination();
+  // Initialize the game after difficulty selection
+  function applyDifficulty(name) {
+    const preset = DIFFICULTY_PRESETS[name] || DIFFICULTY_PRESETS.Hard;
+    runtime = Object.assign({}, runtime, preset);
+    // set starting funds and update UI
+    fundsUsd = runtime.startFunds;
+    updateFundsDisplay();
+    updateWellCostDisplay();
+    updateLivesDisplay();
+    resetProgressBar();
+    renderMap();
+    startAutoFundTimer();
+    scheduleContamination();
+    if (statusEl) statusEl.textContent = `Difficulty: ${name}. Good luck!`;
+  }
+
+  // Modal wiring: choose difficulty then hide modal and start game
+  function closeModal() {
+    if (!difficultyModal) return;
+    difficultyModal.style.display = 'none';
+  }
+  if (easyBtn) easyBtn.addEventListener('click', () => { applyDifficulty('Easy'); closeModal(); });
+  if (hardBtn) hardBtn.addEventListener('click', () => { applyDifficulty('Hard'); closeModal(); });
+  if (difficultBtn) difficultBtn.addEventListener('click', () => { applyDifficulty('Difficult'); closeModal(); });
+
+  // If modal is not present (fallback), start with default Hard preset immediately
+  if (!difficultyModal) {
+    applyDifficulty('Hard');
+  } else {
+    // ensure modal is visible; defer initialization until user picks a difficulty
+    if (difficultyModal.style) difficultyModal.style.display = 'flex';
+  }
 
   // Cleanup on unload
   window.addEventListener('beforeunload', () => {
