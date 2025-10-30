@@ -6,6 +6,11 @@
   <title>Build a Well: Clean Water Saves Lives</title>
   <link rel="icon" type="image/x-icon" href="Black charity water logo.png">
   <link rel="stylesheet" href="style.css">
+
+  <!-- Google Fonts: Poppins + Montserrat as web fallbacks for Proxima Nova -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="game-container">
@@ -84,12 +89,13 @@ Each well built in this simulation supports 500 people with clean water. In part
   <!-- Difficulty selection modal (blocks game until choice) -->
   <div id="difficultyModal" class="difficulty-modal" role="dialog" aria-modal="true">
     <div class="difficulty-card">
-      <h2>Select Difficulty</h2>
+      <h2>Welcome to Build a Well!</h2>
+      <p>In this real-time strategy game, you will <p2>dig for water</p2> and <p2>fundraise</p2> to build wells, providing clean water to those in need. Your choices matter!</p>
       <p>Choose a difficulty to adjust starting funds, costs, and how fast wells may become contaminated.</p>
       <div class="difficulty-row">
         <button id="easyBtn" class="btn-easy">Easy</button>
         <button id="hardBtn" class="btn-hard">Hard</button>
-        <button id="difficultBtn" class="btn-difficult">Difficult</button>
+        <button id="difficultBtn" class="btn-difficult">Very Hard</button>
       </div>
     </div>
   </div>

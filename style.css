@@ -21,7 +21,8 @@
 }
 
 body {
-  font-family: 'Baskerville', 'Proxima Nova', 'Avenir', Georgia, serif;
+  /* prefer locally installed Proxima Nova; fall back to Montserrat, Poppins, then Avenir/Georgia */
+  font-family: 'Proxima Nova', 'Montserrat', 'Poppins', 'Avenir', Georgia, serif;
   background: var(--bg-dark);
   color: var(--text-light);
   text-align: center;
@@ -54,9 +55,9 @@ body {
   margin: 5px 0;
   font-size: 1.7rem;
   color: var(--brand-blue);
-  /* removed blue glow */
   letter-spacing: 0.14em;
 }
+
 
 .hud-stats {
   display: flex;
@@ -233,9 +234,6 @@ button.donate:hover, .donate:hover {
   border-color: var(--brand-yellow);
   background: rgba(255, 201, 7, 0.08);
 }
-
-/* --- REMOVE OLD SPOT STYLES --- */
-/* The circular spots have been replaced by the animated overlay */
 
 /* === INTERACTIVE / ANIMATIONS === */
 /* Pulse animation used for clickable feedback */
@@ -498,7 +496,7 @@ button.donate:hover, .donate:hover {
 }
 
 #difficultyModal .difficulty-card {
-  background: var(--modal-card-bg);
+  background: var(--bg-medium);
   border-radius: 12px;
   padding: 18px 20px;
   max-width: 520px;
@@ -514,6 +512,7 @@ button.donate:hover, .donate:hover {
   font-size: 1.25rem;
   color: var(--brand-blue);
   font-weight: 600;
+  font-family: proxima nova;
 }
 
 #difficultyModal .difficulty-card p {
@@ -522,6 +521,12 @@ button.donate:hover, .donate:hover {
   font-size: 0.95rem;
 }
 
+#difficultyModal .difficulty-card p2 {
+  margin: 0 0 14px;
+  font-weight: bold;
+  color: var(--brand-yellow);
+  font-size: 0.95rem;
+}
 /* Button row */
 #difficultyModal .difficulty-row {
   display: flex;
