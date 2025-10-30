@@ -13,6 +13,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- ======================================================
+       Build-a-Well markup sections:
+       - HUD / header
+       - Main game area (village / map)
+       - Controls (dig/fundraise)
+       - Footer / fundraise
+       - Difficulty modal
+       ====================================================== -->
   <div class="game-container">
 
     <!-- === HUD / HEADER === -->
@@ -22,7 +30,7 @@
            class="logo" 
            style="max-width: 220px; height: auto; margin-bottom: 8px;">
       <h1>Build a Well</h1>
-      <h3 style="margin-top:-5px;color:var(--brand-yellow);font-weight:500;">Clean Water Saves Lives</h3>
+      <h3 style="margin-top:-5px;color:var(--brand-yellow);font-weight:500;">Save lives one well at a time!</h3>
 
       <div class="hud-stats">
         <div class="stat" id="fundsStat">
@@ -34,11 +42,11 @@
       </div>
     </header>
 
-    <!-- === MAIN GAME AREA === -->
+  <!-- === MAIN GAME AREA === -->
     <div class="village">
       <!-- Global Impact Progress -->
-      <div id="globalImpactContainer" style="width:100%;margin-bottom:10px;">
-        <div id="globalImpactBar" style="height:16px;background:#333;border-radius:8px;overflow:hidden;">
+      <div style="width:100%;margin-bottom:10px;">
+        <div style="height:16px;background:#333;border-radius:8px;overflow:hidden;">
           <div id="impactProgress" style="height:100%;width:0%;background:var(--brand-green);transition:width 0.5s;"></div>
         </div>
         <span id="impactProgressLabel" style="font-size:0.95em;font-weight:bold;display:block;margin-top:4px;">
@@ -53,22 +61,21 @@
 
     <!-- === CONTROLS === -->
     <div class="controls" style="display: flex; justify-content: space-between; align-items: center;">
-      <button id="digBtn" style="flex:1; margin-right:10px;">Dig for Water💧</button>
+      <button id="digBtn" style="flex:1; margin-right:10px;">Dig for Water ⛏️</button>
       <button id="buildBtn" style="flex:1; margin-left:10px;">Fundraise 💰</button>
     </div>
     <div class="progress">
       <div id="progressBar"></div>
     </div>
 
-    <!-- === FOOTER / FUNDRAISE === -->
+  <!-- === FOOTER / FUNDRAISE === -->
     <footer class="fundraise">
-      <p id="fundraiseStatus">
-        Use the funds to build wells and save lives!
+      <p>
+        Dig to find water, raise funds to build wells!
       </p>
 
       <a href="https://www.charitywater.org/donate" 
          target="_blank" 
-         id="donateBtn" 
          style="display:inline-block;margin-top:10px;text-decoration:none;">
         <button class="donate">🌊 Donate IRL with charity: water</button>
       </a>
@@ -87,10 +94,10 @@ Each well built in this simulation supports 500 people with clean water. In part
   </div>
 
   <!-- Difficulty selection modal (blocks game until choice) -->
-  <div id="difficultyModal" class="difficulty-modal" role="dialog" aria-modal="true">
+  <div id="difficultyModal" role="dialog" aria-modal="true">
     <div class="difficulty-card">
       <h2>Welcome to Build a Well!</h2>
-      <p>In this real-time strategy game, you will <p2>dig for water</p2> and <p2>fundraise</p2> to build wells, providing clean water to those in need. Your choices matter!</p>
+      <p>In this real-time strategy game, you will <span class="emph">dig for water</span> and <span class="emph">fundraise</span> to build wells, providing clean water to those in need. Your choices matter!</p>
       <p>Choose a difficulty to adjust starting funds, costs, and how fast wells may become contaminated.</p>
       <div class="difficulty-row">
         <button id="easyBtn" class="btn-easy">Easy</button>

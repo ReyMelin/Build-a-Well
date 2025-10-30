@@ -1,4 +1,18 @@
 (() => {
+  // =======================================================
+  // Build-a-Well — main game script
+  // Sections:
+  //  - Constants
+  //  - Runtime config & presets
+  //  - State
+  //  - DOM references
+  //  - Helper formatters
+  //  - UI update helpers
+  //  - Map rendering & spot handling
+  //  - Fundraising / digging
+  //  - Contamination scheduling
+  //  - Wiring & initialization
+  // =======================================================
   // Constants (keep as base values for presets)
   const INITIAL_FUNDS_USD = 80000;         // start with $80,000
   const WELL_COST_USD = 20000;             // one well costs $20,000
@@ -15,6 +29,7 @@
   const CONTAM_WARNING_MS = 500;         // show warning duration (ms)
 
   // runtime-config (will be set based on difficulty)
+  // --- SECTION: Runtime configuration (defaults, overridable by difficulty) ---
   let runtime = {
     startFunds: INITIAL_FUNDS_USD,
     wellCost: WELL_COST_USD,
@@ -28,6 +43,7 @@
   };
 
   // Difficulty presets (tweak multipliers / values per difficulty)
+  // --- SECTION: Difficulty presets ---
   const DIFFICULTY_PRESETS = {
     Easy: {
       startFunds: Math.round(INITIAL_FUNDS_USD * 1.5),
@@ -65,37 +81,36 @@
     }
   };
 
+  // --- SECTION: Mutable game state ---
   // State (defer funds initialization until difficulty chosen)
   let fundsUsd = null;
   let livesSaved = 0;
   let currency = 'USD';
   let countdown = AUTO_FUND_INTERVAL_SEC;
   let digProgress = 0;
-  let digInterval = null;
   let autoFundTimer = null;
   let fundraiseLocked = false;
   let confettiLaunched = false;
   let firstWellBuilt = false;
   let spots = [];
   let contaminationTimeout = null;
+  let statusTimeout = null; // used by setStatus to auto-clear status messages
   let activeWarningEl = null;
 
-  // DOM (tolerant lookups for multiple possible IDs; allow missing elements)
+  // --- SECTION: DOM references ---
+  // Tolerant lookups for multiple possible IDs; allow missing elements so script is resilient
   const fundsEl = document.getElementById('funds') || document.getElementById('fundsLabel') || null;
   const livesEl = document.getElementById('lives') || document.getElementById('livesSaved') || null;
   const wellsEl = document.getElementById('wells') || null;
-  const fundraiseCountdownEl = document.getElementById('fundraiseCountdown') || null;
   const buildBtn = document.getElementById('buildBtn') || null;
   const digBtn = document.getElementById('digBtn') || null;
   const progressBarEl = document.getElementById('progressBar') || null;
   const villagerProgressEl = document.getElementById('villagerProgress') || document.getElementById('impactProgress') || null;
   const villagerProgressLabel = document.getElementById('villagerProgressLabel') || document.getElementById('impactProgressLabel') || null;
   const statusEl = document.getElementById('status') || null;
-  const currencyToggleBtn = document.getElementById('currencyToggle') || document.getElementById('currencyToggleBtn') || null;
   const resetBtn = document.getElementById('resetBtn') || null;
   const mapEl = document.getElementById('map') || null;
-  const wellCostDisplayEl = document.getElementById('wellCostDisplay') || null;
-  // new: explicit currency UI pieces
+  // explicit currency UI pieces
   const currencySymbolEl = document.getElementById('currencySymbol') || null;
   const fundsLabelEl = document.getElementById('fundsLabel') || null;
   const currencyEmojiEl = document.getElementById('currencyEmoji') || null;
@@ -107,6 +122,7 @@
 
   // Helper: format currency based on selected currency
   // full formatted string including symbol (use in messages)
+  // --- SECTION: Helper formatters ---
   function formatCurrencyFull(amountUsd) {
     if (currency === 'USD') {
       return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amountUsd);
@@ -126,6 +142,17 @@
   }
 
   // UI updates (use runtime values where needed)
+  // --- SECTION: UI update helpers ---
+  // Unified status helper: shows a message for a consistent duration.
+  // Pass durationMs = 0 to keep the message until explicitly changed.
+  function setStatus(message, durationMs = 2500) {
+    if (!statusEl) return;
+    statusEl.textContent = message;
+    if (statusTimeout) { clearTimeout(statusTimeout); statusTimeout = null; }
+    if (durationMs > 0) {
+      statusTimeout = setTimeout(() => { if (statusEl) statusEl.textContent = ''; statusTimeout = null; }, durationMs);
+    }
+  }
   function updateFundsDisplay() {
     if (fundsEl) fundsEl.textContent = formatCurrencyNumber(fundsUsd);
     if (currencySymbolEl) currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
@@ -144,14 +171,9 @@
   }
 
   function updateWellCostDisplay() {
-    if (wellCostDisplayEl) {
-      if (currencySymbolEl) {
-        currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
-      }
-      if (currencyEmojiEl) currencyEmojiEl.textContent = currency === 'USD' ? '💵' : '💶';
-      // display adjusted well cost
-      wellCostDisplayEl.textContent = formatCurrencyNumber(runtime.wellCost);
-    }
+    // update currency symbol/emoji only; there is no wellCostDisplay element in markup
+    if (currencySymbolEl) currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
+    if (currencyEmojiEl) currencyEmojiEl.textContent = currency === 'USD' ? '💵' : '💶';
   }
   function updateLivesDisplay() {
     if (livesEl) livesEl.textContent = String(livesSaved);
@@ -173,11 +195,10 @@
       }
     }
   }
-
+  // --- SECTION: Lifecycle helpers (timers/cleanup) ---
   // stop timers/intervals used by the simulation
   function stopAll() {
     if (autoFundTimer) { clearInterval(autoFundTimer); autoFundTimer = null; }
-    if (digInterval) { clearInterval(digInterval); digInterval = null; }
     if (contaminationTimeout) { clearTimeout(contaminationTimeout); contaminationTimeout = null; }
   }
 
@@ -186,9 +207,7 @@
     stopAll();
     launchConfetti();
 
-    // overlay on top of the map
     if (!mapEl) return;
-    // avoid duplicate overlay
     if (mapEl.querySelector('.victory-overlay')) return;
 
     const overlay = document.createElement('div');
@@ -211,7 +230,6 @@
 
     message.appendChild(restart);
     overlay.appendChild(message);
-    // place overlay inside the map so it covers the map area
     mapEl.appendChild(overlay);
   }
 
@@ -248,13 +266,12 @@
       container.appendChild(piece);
     }
 
-    // remove after animation
     setTimeout(() => {
       if (container && container.parentElement) container.parentElement.removeChild(container);
     }, 3000);
   }
-
-  // Map + weather rendering (simplified: remove color aura; place spots randomly)
+  // --- SECTION: Map rendering & spot placement ---
+  // Map rendering (creates map image, spots wrapper and positions clickable spots)
   function renderMap() {
     // clear and prepare container
     if (!mapEl) return;
@@ -374,17 +391,19 @@
   }
 
   // Spot click handler: use runtime values for costs and lives
+  // --- SECTION: Spot interaction handler ---
+  // Handles clicks on spots (build well / clean toxic wells)
   function onSpotClick(index, spotEl) {
     const spot = spots[index];
     if (!spot) return;
     if (spot.status === 'dry' && spotEl && !spotEl.hasAttribute('data-revealed')) {
-      if (statusEl) statusEl.textContent = 'This spot is still buried — dig to reveal it first.';
+        setStatus('This spot is still buried — dig to reveal it first.', 2500);
       return;
     }
 
     if (spot.status === 'toxic') {
       if (fundsUsd < runtime.cleanCost) {
-        if (statusEl) statusEl.textContent = `Not enough funds to clean — need ${formatCurrencyFull(runtime.cleanCost)}.`;
+  setStatus(`Not enough funds to clean — need ${formatCurrencyFull(runtime.cleanCost)}.`, 3000);
         flashFunds();
         return;
       }
@@ -398,28 +417,27 @@
           img.style.filter = '';
         }
         spotEl.classList.remove('toxic');
-        Array.from(spotEl.querySelectorAll('span')).forEach(s => {
-          if (s.textContent && /[☣☠]/.test(s.textContent)) s.remove();
-        });
-        spotEl.style.background = '#6cc66c';
-        spotEl.title = 'Well cleaned';
+          Array.from(spotEl.querySelectorAll('span')).forEach(s => {
+            if (s.textContent && /[☣☠]/.test(s.textContent)) s.remove();
+          });
+  spotEl.title = 'Well cleaned';
+  // ensure cursor returns to default after cleaning so hover doesn't show pointer
+  spotEl.style.cursor = 'default';
       }
       livesSaved = Math.min(TOTAL_LIVES_AT_RISK, livesSaved + runtime.livesPerWell);
       updateFundsDisplay();
       updateLivesDisplay();
-      if (statusEl) statusEl.textContent = `Cleaned toxic well — ${formatCurrencyFull(runtime.cleanCost)} spent. ${runtime.livesPerWell} lives protected again.`;
-      setTimeout(() => {
-        if (statusEl) statusEl.textContent = 'Tap the dirt spots to build more wells!';
-      }, 2500);
+      setStatus(`Cleaned toxic well — ${formatCurrencyFull(runtime.cleanCost)} spent. ${runtime.livesPerWell} lives protected again.`, 3000);
+      setTimeout(() => { setStatus('Tap the dirt spots to build more wells!', 2500); }, 3000);
       return;
     }
 
     if (spot.status !== 'dry') {
-      if (statusEl) statusEl.textContent = 'You can only build on dry areas.';
+  setStatus('You can only build on dry areas.', 2500);
       return;
     }
     if (fundsUsd < runtime.wellCost) {
-      if (statusEl) statusEl.textContent = `Not enough funds. Please fundraise before building a well!`;
+  setStatus(`Not enough funds. Please fundraise before building a well!`, 3000);
       flashFunds();
       return;
     }
@@ -444,18 +462,17 @@
     livesSaved += runtime.livesPerWell;
     updateFundsDisplay();
     updateLivesDisplay();
-    if (statusEl) statusEl.textContent = `Built a well — ${runtime.livesPerWell} lives helped.`;
-    setTimeout(() => {
-      if (statusEl) statusEl.textContent = 'Tap the dirt spots to build more wells!';
-    }, 2000);
+    setStatus(`Built a well — ${runtime.livesPerWell} lives helped.`, 3000);
+    setTimeout(() => { setStatus('Tap the dirt spots to build more wells!', 2500); }, 3000);
   }
 
   let digClicks = 0;
+  // --- SECTION: Digging / revealing spots ---
   function revealSpots() {
     if (!mapEl) return;
     digClicks++;
     if (digClicks < 3) {
-      if (statusEl) statusEl.textContent = `Digging... ${Math.round((digClicks / 3) * 100)}%`;
+  setStatus(`Digging... ${Math.round((digClicks / 3) * 100)}%`, 0);
       return;
     }
     digClicks = 0;
@@ -465,32 +482,33 @@
       spot => !spot.hasAttribute('data-revealed')
     );
     if (hiddenSpots.length === 0) {
-      if (statusEl) statusEl.textContent = 'No more diggable spots!';
+  setStatus('No more diggable spots!', 2500);
       return;
     }
     const revealSpot = hiddenSpots[Math.floor(Math.random() * hiddenSpots.length)];
     revealSpot.style.visibility = 'visible';
     revealSpot.setAttribute('data-revealed', 'true');
-    if (statusEl) statusEl.textContent = 'Build a well!';
+  setStatus('Build a well!', 2500);
   }
 
+  // --- SECTION: Fundraising progress (buildBtn action) ---
   function startFundraiseProgress() {
     if (fundraiseLocked) return;
     digProgress = Math.min(digProgress + 10, 100);
     if (progressBarEl) progressBarEl.style.width = `${digProgress}%`;
     if (digProgress < 100) {
-      if (statusEl) statusEl.textContent = `Fundraising... ${digProgress}%`;
+  setStatus(`Fundraising... ${digProgress}%`, 0);
       return;
     }
     fundraiseLocked = true;
-    if (statusEl) statusEl.textContent = `Fantastic! You have raised ${formatCurrencyFull(runtime.digProfit)}!`;
+  setStatus(`Fantastic! You have raised ${formatCurrencyFull(runtime.digProfit)}!`, 3000);
     fundsUsd += runtime.digProfit;
     updateFundsDisplay();
     setTimeout(() => {
       digProgress = 0;
       if (progressBarEl) progressBarEl.style.width = '0%';
       fundraiseLocked = false;
-      if (statusEl) statusEl.textContent = 'Dig to open the ground.';
+  setStatus('Dig to open the ground.', 0);
     }, 1500);
   }
 
@@ -499,12 +517,12 @@
     livesSaved = 0;
     currency = 'USD';
     firstWellBuilt = false;
-    if (currencyToggleBtn) currencyToggleBtn.textContent = 'Switch to EUR';
+    // currency toggle element removed from markup; HUD will update via updateFundsDisplay()
     updateFundsDisplay();
     updateWellCostDisplay();
     updateLivesDisplay();
     resetProgressBar();
-    if (statusEl) statusEl.textContent = 'Game reset. Dig to open the ground.';
+  setStatus('Game reset. Dig to open the ground.', 0);
     // remove victory overlay if present
     if (mapEl) {
       const ov = mapEl.querySelector('.victory-overlay');
@@ -519,8 +537,8 @@
     startAutoFundTimer();
     scheduleContamination();
   }
+  // --- SECTION: Contamination scheduling & warnings ---
 
-  // schedule next contamination event at a random delay
   function scheduleContamination() {
     if (!mapEl) return;
     if (contaminationTimeout) clearTimeout(contaminationTimeout);
@@ -589,9 +607,14 @@
           position: 'absolute', right: '-6px', top: '-6px', color: '#ff4d4d', fontSize: '14px', pointerEvents: 'none'
         });
         spotEl.appendChild(mark);
+        // make toxic wells clickable/interactive like other spots
+        spotEl.title = 'Toxic well — click to clean';
+        spotEl.style.cursor = 'pointer';
       } else {
         // fallback: change background
         spotEl.style.background = 'rgba(200,40,40,0.12)';
+        spotEl.title = 'Toxic well';
+        spotEl.style.cursor = 'pointer';
       }
     }
 
@@ -603,6 +626,8 @@
     showContaminationWarning('Water is contaminated! A well has turned toxic.');
     scheduleContamination();
   }
+
+  // --- SECTION: Wiring & initialization ---
 
   // Wire UI (robust: delegated handlers, ensure button is enabled)
   // ensure the build button behaves like a control (avoid accidental form-submit)
@@ -626,6 +651,15 @@
 
   // Delegated click handler: reliable even if elements are re-rendered/replaced
   document.addEventListener('click', (ev) => {
+    // Quick spot delegation: handle clicks on any spot (dry/well/toxic)
+    const spotEl = ev.target && ev.target.closest ? ev.target.closest('.spot') : null;
+    if (spotEl) {
+      ev.preventDefault();
+      const idx = parseInt(spotEl.dataset.index, 10);
+      // guard: only call if index is a number
+      if (!Number.isNaN(idx)) onSpotClick(idx, spotEl);
+      return;
+    }
     const fundBtn = ev.target.closest && ev.target.closest('#buildBtn');
     if (fundBtn) {
       ev.preventDefault();
@@ -653,30 +687,28 @@
   });
 
   // Add startAutoFundTimer function
+  // --- SECTION: Timers (auto-funding) ---
   function startAutoFundTimer() {
     if (autoFundTimer) clearInterval(autoFundTimer);
     countdown = runtime.autoFundInterval;
-    if (fundraiseCountdownEl) fundraiseCountdownEl.textContent = String(countdown);
     autoFundTimer = setInterval(() => {
       countdown -= 1;
       if (countdown <= 0) {
         fundsUsd += runtime.autoFundAmount;
         updateFundsDisplay();
-        if (statusEl) statusEl.textContent = `Automatic fundraising: ${formatCurrencyFull(runtime.autoFundAmount)} added.`;
+        setStatus(`Automatic fundraising: ${formatCurrencyFull(runtime.autoFundAmount)} added.`, 3000);
         countdown = runtime.autoFundInterval;
-        setTimeout(() => {
-          if (statusEl) statusEl.textContent = 'Build a well 💧';
-        }, 2500);
+        setTimeout(() => { setStatus('Build a well 💧', 2500); }, 3000);
       }
-      if (fundraiseCountdownEl) fundraiseCountdownEl.textContent = String(countdown);
     }, 1000);
   }
 
   // Currency toggle (guard) — ensure all HUD pieces update immediately
+  // --- SECTION: Currency toggle/helper ---
+  // Switch displayed currency and update HUD pieces
   function toggleCurrency() {
     currency = currency === 'USD' ? 'EUR' : 'USD';
     // update any explicit toggle button text if present
-    if (currencyToggleBtn) currencyToggleBtn.textContent = currency === 'USD' ? 'Switch to EUR' : 'Switch to USD';
     // update label/symbol/emoji and HUD numeric immediately
     if (fundsLabelEl) fundsLabelEl.textContent = currency === 'USD' ? 'USD' : 'EUR';
     if (currencySymbolEl) currencySymbolEl.textContent = currency === 'USD' ? '$' : '€';
@@ -684,11 +716,13 @@
     // refresh displays that depend on currency
     updateFundsDisplay();
     updateWellCostDisplay();
-    // optional status hint
-    if (statusEl) statusEl.textContent = `Prices shown in ${currency}.`;
+  // optional status hint
+  setStatus(`Prices shown in ${currency}.`, 2000);
   }
 
   // Initialize the game after difficulty selection
+  // --- SECTION: Initialization / difficulty handling ---
+  // Apply a difficulty preset and start or update game subsystems
   function applyDifficulty(name) {
     const preset = DIFFICULTY_PRESETS[name] || DIFFICULTY_PRESETS.Hard;
     runtime = Object.assign({}, runtime, preset);
@@ -701,7 +735,7 @@
     renderMap();
     startAutoFundTimer();
     scheduleContamination();
-    if (statusEl) statusEl.textContent = `Difficulty: ${name}. Good luck!`;
+  setStatus(`Difficulty: ${name}. Good luck!`, 3000);
   }
 
   // Modal wiring: choose difficulty then hide modal and start game
@@ -724,7 +758,6 @@
   // Cleanup on unload
   window.addEventListener('beforeunload', () => {
     if (autoFundTimer) clearInterval(autoFundTimer);
-    if (digInterval) clearInterval(digInterval);
     if (contaminationTimeout) clearTimeout(contaminationTimeout);
   });
 })();
